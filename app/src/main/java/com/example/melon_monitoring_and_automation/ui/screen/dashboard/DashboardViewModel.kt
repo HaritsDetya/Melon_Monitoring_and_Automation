@@ -1,9 +1,9 @@
-package com.example.melon_monitoring_and_automation.ui.screen.history
+package com.example.melon_monitoring_and_automation.ui.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.melon_monitoring_and_automation.domain.model.HydroponicData
-import com.example.melon_monitoring_and_automation.domain.usecase.GetHistoricalHydroponicDataUseCase
+import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeHydroponicDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class HistoryViewModel @Inject constructor(
-    private val getHistoricalHydroponicDataUseCase: GetHistoricalHydroponicDataUseCase
+class DashboardViewModel @Inject constructor(
+    private val getRealtimeHydroponicDataUseCase: GetRealtimeHydroponicDataUseCase
 ) : ViewModel() {
 
-    private val _historicalData = MutableStateFlow<List<HydroponicData>>(emptyList())
-    val historicalData: StateFlow<List<HydroponicData>> = _historicalData.asStateFlow()
+    private val _hydroponicData = MutableStateFlow<HydroponicData?>(null)
+    val hydroponicData: StateFlow<HydroponicData?> = _hydroponicData.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -25,26 +25,19 @@ class HistoryViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    init {
-        val endTime = System.currentTimeMillis()
-        val startTime = endTime - (24 * 60 * 60 * 1000) // 24 jam yang lalu
-        fetchHistoricalData(startTime, endTime)
-    }
-
-    fun fetchHistoricalData(startTime: Long, endTime: Long) {
+    fun fetchRealtimeData(userId: String, systemId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                getHistoricalHydroponicDataUseCase(startTime, endTime).collect { data ->
-                    _historicalData.value = data
+                getRealtimeHydroponicDataUseCase(userId, systemId).collect { data ->
+                    _hydroponicData.value = data
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Gagal memuat riwayat data: ${e.message}"
+                _errorMessage.value = "Gagal memuat data: ${e.message}"
                 _isLoading.value = false
             }
         }
     }
-
 }
