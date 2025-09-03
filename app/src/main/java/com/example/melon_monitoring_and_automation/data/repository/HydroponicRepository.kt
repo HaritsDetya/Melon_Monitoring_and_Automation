@@ -4,7 +4,6 @@ import com.example.melon_monitoring_and_automation.data.local.AppDatabase
 import com.example.melon_monitoring_and_automation.data.local.SensorHistoryEntity
 import com.example.melon_monitoring_and_automation.data.local.UserModel
 import com.example.melon_monitoring_and_automation.data.remote.FirebaseDataSource
-import com.example.melon_monitoring_and_automation.data.remote.SensorReading
 import com.example.melon_monitoring_and_automation.domain.model.HydroponicData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -65,6 +64,10 @@ class HydroponicRepository @Inject constructor (
 
     suspend fun saveUserProfile(user: UserModel) {
         firebaseDataSource.saveUserProfile(user)
+    }
+
+    suspend fun saveSystemData(userId: String, systemId: String) {
+        firebaseDataSource.saveSystemData(userId, systemId)
     }
 
     fun getUserProfile(uid: String): Flow<UserModel?> {

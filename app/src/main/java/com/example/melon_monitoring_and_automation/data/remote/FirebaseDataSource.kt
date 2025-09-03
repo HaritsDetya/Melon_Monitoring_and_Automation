@@ -29,10 +29,6 @@ class FirebaseDataSource @Inject constructor(
         return database.getReference("userProfiles/$uid")
     }
 
-    /**
-     * Mengambil data sensor secara real-time dari Firebase.
-     * Mengembalikan Flow yang akan memancarkan SensorReading setiap kali ada perubahan.
-     */
     fun getRealtimeSensorData(userId: String, systemId: String): Flow<SensorReading> = callbackFlow {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -49,31 +45,6 @@ class FirebaseDataSource @Inject constructor(
         awaitClose{ getSensorDataRef(userId, systemId).removeEventListener(listener) }
     }
 
-    /**
-     * Mengambil riwayat data sensor (contoh sederhana, bisa dikembangkan lagi).
-     * Untuk riwayat data yang lebih kompleks, Anda mungkin perlu struktur data yang berbeda di Firebase
-     * atau menggunakan database lokal/Cloud Firestore.
-     */
-//    suspend fun getHistoricalSensorData(): List<SensorReading> {
-//        return try {
-//            val snapshot = getSensorDataRef().get().await()
-//            val readings = mutableListOf<SensorReading>()
-//            val latestReading = snapshot.getValue(SensorReading::class.java)
-//            if (latestReading != null) {
-//                readings.add(latestReading)
-//            }
-//            readings
-//        } catch (e: Exception) {
-//            println("Error fetching historical data: ${e.message}")
-//            emptyList()
-//        }
-//    }
-
-    /**
-     * Mengirim perintah kontrol ke aktuator (misalnya, menghidupkan/mematikan pompa).
-     * @param device Nama perangkat (misal: "waterPump", "nutrientPumpA")
-     * @param status Status yang diinginkan (misal: true untuk ON, false untuk OFF)
-     */
     suspend fun setDeviceStatus(userId: String, systemId: String, device: String, status: Boolean) {
         try {
             getControlRef(userId, systemId).child(device).setValue(status).await()
@@ -83,11 +54,6 @@ class FirebaseDataSource @Inject constructor(
         }
     }
 
-    /**
-     * Mengirim pengaturan otomatis (misalnya, batas pH, jadwal irigasi).
-     * @param setting Nama pengaturan (misal: "phThreshold", "irrigationSchedule")
-     * @param value Nilai pengaturan
-     */
     suspend fun setAutomaticSetting(userId: String, systemId: String, setting: String, value: Any) {
         try {
             getControlRef(userId, systemId).child("autoSetting").child(setting).setValue(value).await()
@@ -96,11 +62,6 @@ class FirebaseDataSource @Inject constructor(
             println("Gagal mengirim pengaturan otomatis untuk '$setting': ${e.message}")
         }
     }
-
-    /**
-     * Menyimpan profil pengguna baru ke Firebase Realtime Database.
-     * @param user Objek User yang akan disimpan.
-     */
 
     suspend fun saveUserProfile(user: UserModel) {
         try {
@@ -111,11 +72,29 @@ class FirebaseDataSource @Inject constructor(
         }
     }
 
-    /**
-     * Mengambil profil pengguna dari Firebase Realtime Database.
-     * Mengembalikan Flow yang akan memancarkan objek User.
-     * @param uid ID pengguna (dari Firebase Auth).
-     */
+    suspend fun saveSystemData(userId: String, systemId: String) {
+        try {
+            val defaultSystemData = mapOf(
+                "sensorData" to mapOf(
+                    "ec" to 0.0,
+                    "humidity" to 0.0,
+                    "ph" to 0.0,
+                    "temperature" to 0.0,
+                    "waterLevel" to 0.0,
+                    "timestamp" to System.currentTimeMillis()
+                ),
+                "control" to mapOf(
+                    "waterPump" to false,
+                    "nutrientPumpA" to false,
+                    "phThreshold" to 6.0,
+                    "irrigationInterval" to 15
+                )
+            )
+            database.getReference("users/$userId/systems/$systemId").setValue(defaultSystemData).await()
+        } catch (e: Exception) {
+            println("Gagal menyimpan data sistem awal: ${e.message}")
+        }
+    }
 
     fun getUserProfile(uid: String): Flow<UserModel?> = callbackFlow {
         val listener = object : ValueEventListener {
@@ -125,7 +104,7 @@ class FirebaseDataSource @Inject constructor(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
+                println("Firebase database error: ${error.message}")
             }
         }
         getUserProfileRef(uid).addValueEventListener(listener)

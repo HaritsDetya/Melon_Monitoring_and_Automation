@@ -19,12 +19,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
 import com.example.melon_monitoring_and_automation.ui.screen.auth.AuthViewModel
 import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
@@ -40,12 +42,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             HydroponicAppTheme {
-                val navController = rememberNavController()
                 val authViewModel: AuthViewModel = hiltViewModel()
-                val currentUser by authViewModel.currentUser.collectAsState()
+                val navController = rememberNavController()
+                val isLoggedIn by authViewModel.authSuccess.collectAsState()
                 var initialAuthCheckCompleted by remember { mutableStateOf(false) }
 
-                LaunchedEffect(currentUser) {
+                LaunchedEffect(Unit) {
                     initialAuthCheckCompleted = true
                 }
 
@@ -54,45 +56,75 @@ class MainActivity : ComponentActivity() {
                         CircularProgressIndicator()
                     }
                 } else {
-                    Scaffold(
-                        bottomBar = { BottomNavigationBar(navController = navController) }
-                    ) { paddingValues ->
-                        AppNavHost(
-                            navController = navController,
-                            startDestination = Screen.Dashboard.route,
-                            modifier = Modifier.padding(paddingValues)
-                        )
-                    }
+                    AppNavHost(
+                        navController = navController,
+                        authViewModel = authViewModel,
+                        isLoggedIn = isLoggedIn
+                    )
                 }
             }
         }
     }
 }
 
-sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Home)
     object Control : Screen("control", "Kontrol", Icons.Default.Settings)
     object History : Screen("history", "Riwayat", Icons.Default.List)
-    object Login : Screen("login", "Login", Icons.Default.Home)
-    object Register : Screen("register", "Register", Icons.Default.Home)
+    object Login : Screen("login", "Login")
+    object Register : Screen("register", "Register")
 }
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    startDestination: String,
-    modifier: Modifier = Modifier
+    authViewModel: AuthViewModel,
+    isLoggedIn: Boolean
 ) {
+    val startDestination = if (isLoggedIn) "main_app_graph" else Screen.Login.route
     NavHost(
         navController = navController,
-        startDestination = startDestination,
-        modifier = modifier
+        startDestination = startDestination
     ) {
-        composable(Screen.Login.route) { LoginScreen(navController) }
-        composable(Screen.Register.route) { RegisterScreen(navController) }
-        composable(Screen.Dashboard.route) { DashboardScreen() }
-        composable(Screen.Control.route) { ControlScreen() }
-        composable(Screen.History.route) { HistoryScreen() }
+        composable(Screen.Login.route) {
+            LoginScreen(navController = navController, viewModel = authViewModel)
+        }
+        composable(Screen.Register.route) {
+            RegisterScreen(navController = navController, viewModel = authViewModel)
+        }
+
+        navigation(
+            startDestination = Screen.Dashboard.route,
+            route = "main_app_graph"
+        ) {
+            composable(Screen.Dashboard.route) {
+                MainScreen(navController = navController) {
+                    DashboardScreen(authViewModel = authViewModel)
+                }
+            }
+            composable(Screen.Control.route) {
+                MainScreen(navController = navController) {
+                    ControlScreen()
+                }
+            }
+            composable(Screen.History.route) {
+                MainScreen(navController = navController) {
+                    HistoryScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MainScreen(
+    navController: NavHostController,
+    content: @Composable (Modifier) -> Unit
+) {
+    Scaffold(
+        bottomBar = { BottomNavigationBar(navController = navController) }
+    ) { paddingValues ->
+        content(Modifier.padding(paddingValues))
     }
 }
 
@@ -104,12 +136,12 @@ fun BottomNavigationBar(navController: NavHostController) {
         val currentRoute = navBackStackEntry?.destination?.route
         items.forEach { screen ->
             NavigationBarItem(
-                icon = { Icon(screen.icon, contentDescription = screen.title) },
+                icon = { Icon(screen.icon!!, contentDescription = screen.title) },
                 label = { Text(screen.title) },
                 selected = currentRoute == screen.route,
                 onClick = {
                     navController.navigate(screen.route) {
-                        popUpTo(navController.graph.startDestinationId) {
+                        popUpTo("main_app_graph") {
                             saveState = true
                         }
                         launchSingleTop = true
