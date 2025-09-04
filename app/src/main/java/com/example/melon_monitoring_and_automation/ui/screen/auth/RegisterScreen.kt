@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -80,6 +82,13 @@ fun RegisterScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        TextButton(
+            modifier = Modifier.align(Alignment.Start),
+            onClick = { navController.popBackStack() }
+        ) {
+            Text("Sudah memiliki akun?")
+        }
+
         if (errorMessage != null) {
             Text(
                 text = errorMessage!!,
@@ -91,7 +100,7 @@ fun RegisterScreen(
 
         Button(
             onClick = { viewModel.register(username, email, password) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.width(200.dp),
             enabled = !isLoading
         ) {
             if (isLoading) {
@@ -102,12 +111,6 @@ fun RegisterScreen(
             } else {
                 Text("Daftar")
             }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        TextButton(
-            onClick = { navController.popBackStack() }
-        ) {
-            Text("Sudah punya akun? Masuk di sini.")
         }
     }
 }
