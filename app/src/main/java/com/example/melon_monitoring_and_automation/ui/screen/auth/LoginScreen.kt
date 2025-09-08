@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -24,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.Screen
+import com.example.melon_monitoring_and_automation.ui.theme.MainGreen
+import com.example.melon_monitoring_and_automation.ui.theme.MainText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,7 @@ fun LoginScreen (
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -79,7 +82,7 @@ fun LoginScreen (
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (errorMessage != null) {
             Text(
@@ -99,7 +102,9 @@ fun LoginScreen (
 
         Button(
             onClick = { viewModel.login(email, password) },
-            modifier = Modifier.width(200.dp),
+            modifier = Modifier.width(100.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(MainGreen),
             enabled = !isLoading
         ) {
             if (isLoading) {
@@ -108,7 +113,7 @@ fun LoginScreen (
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Login")
+                Text("Login", color = MainText)
             }
         }
     }

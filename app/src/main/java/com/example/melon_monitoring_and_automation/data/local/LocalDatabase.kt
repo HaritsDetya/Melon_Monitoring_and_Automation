@@ -6,7 +6,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RoomDatabase
-import com.example.melon_monitoring_and_automation.data.remote.SensorReading
 import kotlinx.coroutines.flow.Flow
 
 @androidx.room.Entity(tableName = "sensor_history")

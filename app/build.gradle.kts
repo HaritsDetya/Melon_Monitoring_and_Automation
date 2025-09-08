@@ -76,6 +76,9 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // Font
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.9.0")
+
     // Pengujian
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

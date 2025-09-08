@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.Screen
+import com.example.melon_monitoring_and_automation.ui.theme.MainGreen
+import com.example.melon_monitoring_and_automation.ui.theme.MainText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +53,7 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -58,6 +64,7 @@ fun RegisterScreen(
             value = username,
             onValueChange = { username = it },
             label = { Text("Username") },
+            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Password Icon") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
         )
@@ -67,6 +74,7 @@ fun RegisterScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
+            leadingIcon = {Icon(Icons.Default.Email, contentDescription = "Email Icon")},
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
@@ -77,17 +85,11 @@ fun RegisterScreen(
             onValueChange = { password = it },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
         Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(
-            modifier = Modifier.align(Alignment.Start),
-            onClick = { navController.popBackStack() }
-        ) {
-            Text("Sudah memiliki akun?")
-        }
 
         if (errorMessage != null) {
             Text(
@@ -98,9 +100,19 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        TextButton(
+            modifier = Modifier.align(Alignment.Start),
+            onClick = { navController.popBackStack() }
+        ) {
+            Text("Sudah memiliki akun?")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = { viewModel.register(username, email, password) },
-            modifier = Modifier.width(200.dp),
+            modifier = Modifier.width(100.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(MainGreen),
             enabled = !isLoading
         ) {
             if (isLoading) {
@@ -109,7 +121,7 @@ fun RegisterScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Daftar")
+                Text("Daftar", color = MainText)
             }
         }
     }

@@ -1,7 +1,5 @@
 package com.example.melon_monitoring_and_automation.ui.theme
 
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 val Purple80 = Color(0xFFD0BCFF)
