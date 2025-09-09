@@ -8,6 +8,7 @@ import com.example.melon_monitoring_and_automation.domain.model.HydroponicData
 import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeHydroponicDataUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,14 +53,23 @@ class DashboardViewModel @Inject constructor(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                getRealtimeHydroponicDataUseCase(userId, systemId).collect { data ->
-                    _hydroponicData.value = data
-                    _isLoading.value = false
-                }
+                hydroponicRepository.getRealtimeHydroponicData(userId, systemId)
+                    .collect { data ->
+                        _hydroponicData.value = data
+                        _isLoading.value = false
+
+                        hydroponicRepository.saveSensorReadingHistory(userId, systemId, data)
+                    }
             } catch (e: Exception) {
                 _errorMessage.value = "Gagal memuat data: ${e.message}"
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun saveRealtimeDataAsHistory(userId: String, systemId: String, data: HydroponicData) {
+        viewModelScope.launch(Dispatchers.IO) {
+            hydroponicRepository.saveSensorReadingHistory(userId, systemId, data)
         }
     }
 }

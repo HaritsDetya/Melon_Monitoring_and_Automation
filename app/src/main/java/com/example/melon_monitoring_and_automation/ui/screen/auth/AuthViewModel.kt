@@ -37,6 +37,7 @@ class AuthViewModel @Inject constructor(
         auth.addAuthStateListener { firebaseAuth ->
             val firebaseUser = firebaseAuth.currentUser
             viewModelScope.launch {
+                _isLoading.value = true
                 if (firebaseUser != null) {
                     try {
                         val userProfile = repository.getUserProfile(firebaseUser.uid).firstOrNull()
@@ -88,25 +89,7 @@ class AuthViewModel @Inject constructor(
         _authSuccess.value = false
         viewModelScope.launch {
             try {
-                val authResult = auth.signInWithEmailAndPassword(email, password).await()
-                val firebaseUser = authResult.user
-
-                firebaseUser?.let {
-                    val userProfile = withTimeoutOrNull(5000) {
-                        repository.getUserProfile(it.uid).firstOrNull()
-                    }
-
-                    if (userProfile != null) {
-                        _currentUser.value = userProfile
-                        _authSuccess.value = true
-                    } else {
-                        _errorMessage.value = "Profil pengguna tidak ditemukan"
-                        _authSuccess.value = false
-                    }
-                } ?: run {
-                    _errorMessage.value = "Pengguna tidak ditemukan setelah login."
-                    _authSuccess.value = false
-                }
+                auth.signInWithEmailAndPassword(email, password).await()
             } catch (e: Exception) {
                 _errorMessage.value = e.message
                 _authSuccess.value = false

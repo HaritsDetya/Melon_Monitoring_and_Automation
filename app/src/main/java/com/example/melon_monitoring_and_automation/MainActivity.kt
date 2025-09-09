@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,6 +46,7 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val navController = rememberNavController()
                 val isLoggedIn by authViewModel.authSuccess.collectAsState()
+                val currentUser by authViewModel.currentUser.collectAsState()
                 var initialAuthCheckCompleted by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
@@ -59,7 +61,9 @@ class MainActivity : ComponentActivity() {
                     AppNavHost(
                         navController = navController,
                         authViewModel = authViewModel,
-                        isLoggedIn = isLoggedIn
+                        isLoggedIn = isLoggedIn,
+                        userId = currentUser?.uid ?: "",
+                        systemId = "mainSystem"
                     )
                 }
             }
@@ -79,7 +83,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
 fun AppNavHost(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    isLoggedIn: Boolean
+    isLoggedIn: Boolean,
+    userId: String,
+    systemId: String
 ) {
     val startDestination = if (isLoggedIn) "main_app_graph" else Screen.Login.route
     NavHost(
@@ -98,18 +104,18 @@ fun AppNavHost(
             route = "main_app_graph"
         ) {
             composable(Screen.Dashboard.route) {
-                MainScreen(navController = navController) {
-                    DashboardScreen(authViewModel = authViewModel)
+                MainScreen(navController = navController) { modifier ->
+                    DashboardScreen(modifier = modifier, authViewModel = authViewModel)
                 }
             }
             composable(Screen.Control.route) {
-                MainScreen(navController = navController) {
-                    ControlScreen()
+                MainScreen(navController = navController) { modifier ->
+                    ControlScreen(modifier = modifier, userId = userId, systemId = systemId)
                 }
             }
             composable(Screen.History.route) {
-                MainScreen(navController = navController) {
-                    HistoryScreen()
+                MainScreen(navController = navController) { modifier ->
+                    HistoryScreen(modifier = modifier, userId = userId, systemId = systemId)
                 }
             }
         }
@@ -141,7 +147,7 @@ fun BottomNavigationBar(navController: NavHostController) {
                 selected = currentRoute == screen.route,
                 onClick = {
                     navController.navigate(screen.route) {
-                        popUpTo("main_app_graph") {
+                        popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
                         launchSingleTop = true

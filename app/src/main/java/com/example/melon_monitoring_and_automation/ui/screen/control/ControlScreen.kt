@@ -28,15 +28,24 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlScreen(
+    modifier: Modifier = Modifier,
     viewModel: ControlViewModel = hiltViewModel(),
-    userId: String = "",
-    systemId: String = ""
+    userId: String,
+    systemId: String
 ) {
+    LaunchedEffect(userId, systemId) {
+        if (userId.isNotEmpty() && systemId.isNotEmpty()) {
+            viewModel.fetchControlData(userId, systemId)
+        }
+    }
     val waterPumpStatus by viewModel.waterPumpStatus.collectAsState()
     val nutrientPumpAStatus by viewModel.nutrientPumpAStatus.collectAsState()
 
     val phThreshold by viewModel.phThreshold.collectAsState()
     val irrigationInterval by viewModel.irrigationInterval.collectAsState()
+
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {

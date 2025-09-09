@@ -6,6 +6,7 @@ import com.example.melon_monitoring_and_automation.data.local.AppDatabase
 import com.example.melon_monitoring_and_automation.data.remote.FirebaseDataSource
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
 import com.example.melon_monitoring_and_automation.domain.usecase.GetHistoricalHydroponicDataUseCase
+import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeControlDataUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeHydroponicDataUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.SetAutomaticSettingUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.SetDeviceControlUseCase
@@ -62,6 +63,11 @@ object AppModule {
     @Provides
     fun provideGetRealtimeHydroponicDataUseCase(repository: HydroponicRepository): GetRealtimeHydroponicDataUseCase {
         return GetRealtimeHydroponicDataUseCase(repository)
+    }
+
+    @Provides
+    fun provideGetRealtimeControlDataUseCase(repository: HydroponicRepository): GetRealtimeControlDataUseCase {
+        return GetRealtimeControlDataUseCase(repository)
     }
 
     @Provides

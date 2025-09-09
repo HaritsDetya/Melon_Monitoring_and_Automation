@@ -1,6 +1,7 @@
 package com.example.melon_monitoring_and_automation.data.remote
 
 import com.example.melon_monitoring_and_automation.data.local.UserModel
+import com.example.melon_monitoring_and_automation.domain.model.ControlData
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -10,6 +11,9 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,12 +21,17 @@ import javax.inject.Singleton
 class FirebaseDataSource @Inject constructor(
     private val database: FirebaseDatabase
 ) {
-    private fun getSensorDataRef(userId: String, systemId: String): DatabaseReference {
-        return database.getReference("users/$userId/systems/$systemId/sensorData")
+
+    private fun getRealtimeDataRef(userId: String, systemId: String): DatabaseReference {
+        return database.getReference("userProfiles/$userId/systems/$systemId/realtimeData")
+    }
+
+    private fun getHistoryDataRef(userId: String, systemId: String): DatabaseReference {
+        return database.getReference("userProfiles/$userId/systems/$systemId/sensorData")
     }
 
     private fun getControlRef(userId: String, systemId: String): DatabaseReference {
-        return database.getReference("users/$userId/systems/$systemId/sensorData")
+        return database.getReference("userProfiles/$userId/systems/$systemId/control")
     }
 
     private fun getUserProfileRef(uid: String): DatabaseReference {
@@ -33,16 +42,59 @@ class FirebaseDataSource @Inject constructor(
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val sensorReading = snapshot.getValue(SensorReading::class.java)
+
                 if (sensorReading != null) {
-                    trySend(sensorReading)
+                    val updateSensorReading = sensorReading.copy(timestamp = System.currentTimeMillis())
+                    trySend(updateSensorReading)
+                } else {
+                    close(Exception("Data sensor tidak ditemukan atau gagal dikonversi."))
                 }
             }
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-        getSensorDataRef(userId, systemId).addValueEventListener(listener)
-        awaitClose{ getSensorDataRef(userId, systemId).removeEventListener(listener) }
+
+        getRealtimeDataRef(userId, systemId).addValueEventListener(listener)
+        awaitClose{ getRealtimeDataRef(userId, systemId).removeEventListener(listener) }
+    }
+
+    fun getRealtimeControlData(userId: String, systemId: String): Flow<ControlData> = callbackFlow {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val controlData = snapshot.getValue(ControlData::class.java)
+                if (controlData != null) {
+                    trySend(controlData)
+                } else {
+                    close(Exception("Data control tidak ditemukan atau gagal dikonversi."))
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        getControlRef(userId, systemId).addValueEventListener(listener)
+        awaitClose{ getControlRef(userId, systemId).removeEventListener(listener) }
+    }
+
+    fun getHistoricalSensorData(userId: String, systemId: String, starTime: Long, endTime: Long): Flow<List<SensorReading>> = callbackFlow {
+        val query = getHistoryDataRef(userId, systemId)
+            .orderByKey()
+            .startAt(starTime.toString())
+            .endAt(endTime.toString())
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val dataList = snapshot.children.mapNotNull { it.getValue(SensorReading::class.java) }
+                trySend(dataList)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        query.addListenerForSingleValueEvent(listener)
+        awaitClose{ query.removeEventListener(listener) }
     }
 
     suspend fun setDeviceStatus(userId: String, systemId: String, device: String, status: Boolean) {
@@ -80,7 +132,7 @@ class FirebaseDataSource @Inject constructor(
                     "humidity" to 0.0,
                     "ph" to 0.0,
                     "temperature" to 0.0,
-                    "waterLevel" to 0.0,
+                    "waterLevel" to "Normal",
                     "timestamp" to System.currentTimeMillis()
                 ),
                 "control" to mapOf(
@@ -90,9 +142,31 @@ class FirebaseDataSource @Inject constructor(
                     "irrigationInterval" to 15
                 )
             )
-            database.getReference("users/$userId/systems/$systemId").setValue(defaultSystemData).await()
+            database.getReference("userProfiles/$userId/systems/$systemId").setValue(defaultSystemData).await()
         } catch (e: Exception) {
             println("Gagal menyimpan data sistem awal: ${e.message}")
+        }
+    }
+
+    suspend fun saveRealtimeData(userId: String, systemId: String, sensorReading: SensorReading) {
+        try {
+            getRealtimeDataRef(userId, systemId).setValue(sensorReading).await()
+            println("Data realtime berhasil diperbarui")
+        } catch (e: Exception) {
+            println("Gagal memperbarui data realtime: ${e.message}")
+        }
+    }
+
+    suspend fun saveSensorReadingHistory(userId: String, systemId: String, sensorReading: SensorReading) {
+        val timestamp = System.currentTimeMillis()
+        val timestampKey = System.currentTimeMillis().toString()
+        val sensorHistoryRef = getHistoryDataRef(userId, systemId).child(timestampKey)
+        val dataWithTimestamp = sensorReading.copy(timestamp = timestamp)
+        try {
+            sensorHistoryRef.setValue(dataWithTimestamp).await()
+            println("Data sensor berhasil disimpan ke riwayat dengan timestamp")
+        } catch (e: Exception) {
+            println("Gagal menyimpan data sensor ke riwayat: ${e.message}")
         }
     }
 

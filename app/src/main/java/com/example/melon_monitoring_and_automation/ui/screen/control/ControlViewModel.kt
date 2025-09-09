@@ -2,6 +2,8 @@ package com.example.melon_monitoring_and_automation.ui.screen.control
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeControlDataUseCase
+import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeHydroponicDataUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.SetAutomaticSettingUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.SetDeviceControlUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +16,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ControlViewModel @Inject constructor(
     private val setDeviceControlUseCase: SetDeviceControlUseCase,
-    private val setAutomaticSettingUseCase: SetAutomaticSettingUseCase
+    private val setAutomaticSettingUseCase: SetAutomaticSettingUseCase,
+    private val getRealtimeControlDataUseCase: GetRealtimeControlDataUseCase
 ) : ViewModel() {
 
     private val _waterPumpStatus = MutableStateFlow(false)
@@ -29,17 +32,43 @@ class ControlViewModel @Inject constructor(
     private val _irrigationInterval = MutableStateFlow(15)
     val irrigationInterval: StateFlow<Int> = _irrigationInterval.asStateFlow()
 
-    fun setWaterPumpStatus(userId: String, systemId: String, status: Boolean) {
-        _waterPumpStatus.value = status
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun fetchControlData(userId: String, systemId: String) {
         viewModelScope.launch {
-            setDeviceControlUseCase("waterPump", userId, systemId, status)
+            _isLoading.value = true
+            try {
+                getRealtimeControlDataUseCase(userId, systemId).collect { controlData ->
+                    _waterPumpStatus.value = controlData.waterPump
+                    _nutrientPumpAStatus.value = controlData.nutrientPumpA
+                    if (true) {
+                        _phThreshold.value = controlData.phThreshold
+                    }
+                    if (true) {
+                        _irrigationInterval.value = controlData.irrigationInterval
+                    }
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Gagal memuat data kontrol: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun setWaterPumpStatus(userId: String, systemId: String, status: Boolean) {
+        viewModelScope.launch {
+            setDeviceControlUseCase(userId, systemId, "waterPump", status)
         }
     }
 
     fun setNutrientPumpAStatus(userId: String, systemId: String, status: Boolean) {
-        _nutrientPumpAStatus.value = status
         viewModelScope.launch {
-            setDeviceControlUseCase("nutrientPumpA", userId, systemId, status)
+            setDeviceControlUseCase(userId, systemId, "nutrientPumpA", status)
         }
     }
 

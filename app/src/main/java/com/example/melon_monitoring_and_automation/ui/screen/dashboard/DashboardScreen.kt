@@ -21,6 +21,7 @@ import com.example.melon_monitoring_and_automation.ui.screen.auth.AuthViewModel
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -126,10 +127,10 @@ fun HydroponicDashboardContent(data: HydroponicData) {
             )
         }
         item {
-            Text(
-                text = "Diperbarui terakhir: ${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(data.timestamp)}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
+            SensorCard(
+                title = "Diperbarui terakhir",
+                value = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(data.timestamp)),
+                desc = "Waktu pembaruan"
             )
         }
     }
