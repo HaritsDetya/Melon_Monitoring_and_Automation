@@ -24,36 +24,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.melon_monitoring_and_automation.SharedViewModel
+import com.example.melon_monitoring_and_automation.ui.components.LoadingIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlScreen(
     modifier: Modifier = Modifier,
     viewModel: ControlViewModel = hiltViewModel(),
-    userId: String,
-    systemId: String
+    sharedViewModel: SharedViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(userId, systemId) {
-        if (userId.isNotEmpty() && systemId.isNotEmpty()) {
-            viewModel.fetchControlData(userId, systemId)
-        }
-    }
-    val waterPumpStatus by viewModel.waterPumpStatus.collectAsState()
-    val nutrientPumpAStatus by viewModel.nutrientPumpAStatus.collectAsState()
-
-    val phThreshold by viewModel.phThreshold.collectAsState()
-    val irrigationInterval by viewModel.irrigationInterval.collectAsState()
-
+    val devicesWithStatus by viewModel.devicesWithStatus.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val activeGreenhouseId by sharedViewModel.activeGreenhouseId.collectAsState()
+
+    LaunchedEffect(activeGreenhouseId) {
+        if (activeGreenhouseId != null) {
+            viewModel.loadGreenhouseDevices(activeGreenhouseId!!)
+        }
+    }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Kontrol Sistem") })
-        }
+        topBar = { TopAppBar(title = { Text("Kontrol Sistem") }) }
     ) { paddingValues ->
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
@@ -61,70 +57,31 @@ fun ControlScreen(
             Text(text = "Kontrol Manual", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Pompa Air Utama")
-                Switch(
-                    checked = waterPumpStatus,
-                    onCheckedChange = { isChecked ->
-                        viewModel.setWaterPumpStatus(userId, systemId, isChecked)
+            if (activeGreenhouseId != null) {
+                if (isLoading) {
+                    LoadingIndicator()
+                } else {
+                    devicesWithStatus.forEach { device ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(device.name)
+                            Switch(
+                                checked = device.status,
+                                onCheckedChange = { isChecked ->
+                                    val ghId = activeGreenhouseId
+                                    if (ghId != null) {
+                                        viewModel.setDeviceStatus(ghId, device.id, isChecked)
+                                    }
+                                }
+                            )
+                        }
                     }
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Pompa Nutrisi A")
-                Switch(
-                    checked = nutrientPumpAStatus,
-                    onCheckedChange = { isChecked ->
-                        viewModel.setNutrientPumpAStatus(userId, systemId, isChecked)
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(text = "Pengaturan Otomatis", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = phThreshold.toString(),
-                onValueChange = { newValue ->
-                    newValue.toDoubleOrNull()?.let {
-                        viewModel.setPhThreshold(it)
-                    }
-                },
-                label = { Text("Ambang Batas pH Otomatis") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Interval Irigasi Otomatis (menit)")
-            Slider(
-                value = irrigationInterval.toFloat(),
-                onValueChange = { newValue ->
-                    viewModel.setIrrigationInterval(newValue.toInt())
-                },
-                valueRange = 1f..60f,
-                steps = 58,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(text = "Setiap $irrigationInterval menit")
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = { viewModel.saveAutomaticSettings(userId, systemId) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Simpan Pengaturan Otomatis")
+                }
+            } else {
+                Text("Pilih Greenhouse untuk mengontrol perangkat.")
             }
         }
     }

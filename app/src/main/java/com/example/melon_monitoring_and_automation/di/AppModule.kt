@@ -3,14 +3,15 @@ package com.example.melon_monitoring_and_automation.di
 import android.content.Context
 import androidx.room.Room
 import com.example.melon_monitoring_and_automation.data.local.AppDatabase
+import com.example.melon_monitoring_and_automation.data.local.DeviceDao
+import com.example.melon_monitoring_and_automation.data.local.GreenhouseDao
+import com.example.melon_monitoring_and_automation.data.local.SensorHistoryDao
+import com.example.melon_monitoring_and_automation.data.local.UserDao
 import com.example.melon_monitoring_and_automation.data.remote.FirebaseDataSource
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
-import com.example.melon_monitoring_and_automation.domain.usecase.GetHistoricalHydroponicDataUseCase
-import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeControlDataUseCase
-import com.example.melon_monitoring_and_automation.domain.usecase.GetRealtimeHydroponicDataUseCase
-import com.example.melon_monitoring_and_automation.domain.usecase.SetAutomaticSettingUseCase
-import com.example.melon_monitoring_and_automation.domain.usecase.SetDeviceControlUseCase
+import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepositoryImpl
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import dagger.Module
 import dagger.Provides
@@ -25,63 +26,70 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseAuth(): FirebaseAuth {
-        return FirebaseAuth.getInstance()
-    }
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
-    fun provideFirebaseDatabase(): FirebaseDatabase {
-        return FirebaseDatabase.getInstance()
-    }
+    fun provideFirebaseDatabase(): FirebaseDatabase = FirebaseDatabase.getInstance()
 
     @Provides
     @Singleton
-    fun provideAppData(@ApplicationContext context: Context): AppDatabase {
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "hydroponic_database"
-        ).build()
+        )
+            // ✅ Tambahkan opsi ini untuk menghapus dan membuat ulang database
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
     @Singleton
-    fun provideFirebaseDataSource(database: FirebaseDatabase): FirebaseDataSource {
-        return FirebaseDataSource(database)
+    fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
+
+    @Provides
+    @Singleton
+    fun provideGreenhouseDao(db: AppDatabase): GreenhouseDao = db.greenhouseDao()
+
+    @Provides
+    @Singleton
+    fun provideDeviceDao(db: AppDatabase): DeviceDao = db.deviceDao()
+
+    @Provides
+    @Singleton
+    fun provideSensorHistoryDao(db: AppDatabase): SensorHistoryDao = db.sensorHistoryDao()
+
+    @Provides
+    @Singleton
+    fun provideDatabaseReference(): DatabaseReference {
+        return FirebaseDatabase.getInstance().reference
     }
 
+    // ✅ Perbaikan: Menambahkan DispatcherProvider sebagai dependency
+    @Provides
+    @Singleton
+    fun provideDispatcherProvider(): DispatcherProvider = DefaultDispatcherProvider()
+
+    // ✅ Perbaikan: Memastikan semua dependencies yang diperlukan disediakan
     @Provides
     @Singleton
     fun provideHydroponicRepository(
         firebaseDataSource: FirebaseDataSource,
-        localDatabase: AppDatabase
+        userDao: UserDao,
+        greenhouseDao: GreenhouseDao,
+        deviceDao: DeviceDao,
+        sensorHistoryDao: SensorHistoryDao,
+        dispatcherProvider: DispatcherProvider
     ): HydroponicRepository {
-        return HydroponicRepository(firebaseDataSource, localDatabase)
-    }
-
-    @Provides
-    fun provideGetRealtimeHydroponicDataUseCase(repository: HydroponicRepository): GetRealtimeHydroponicDataUseCase {
-        return GetRealtimeHydroponicDataUseCase(repository)
-    }
-
-    @Provides
-    fun provideGetRealtimeControlDataUseCase(repository: HydroponicRepository): GetRealtimeControlDataUseCase {
-        return GetRealtimeControlDataUseCase(repository)
-    }
-
-    @Provides
-    fun provideGetHistoricalHydroponicDataUseCase(repository: HydroponicRepository): GetHistoricalHydroponicDataUseCase {
-        return GetHistoricalHydroponicDataUseCase(repository)
-    }
-
-    @Provides
-    fun provideSetDeviceControlUseCase(repository: HydroponicRepository): SetDeviceControlUseCase {
-        return SetDeviceControlUseCase(repository)
-    }
-
-    @Provides
-    fun provideSetAutomaticSettingUseCase(repository: HydroponicRepository): SetAutomaticSettingUseCase {
-        return SetAutomaticSettingUseCase(repository)
+        return HydroponicRepositoryImpl(
+            firebaseDataSource,
+            userDao,
+            greenhouseDao,
+            sensorHistoryDao,
+            deviceDao,
+            dispatcherProvider
+        )
     }
 }

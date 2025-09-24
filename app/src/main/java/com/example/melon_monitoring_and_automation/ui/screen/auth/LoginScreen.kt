@@ -24,7 +24,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.melon_monitoring_and_automation.Screen
+import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.theme.MainGreen
 import com.example.melon_monitoring_and_automation.ui.theme.MainText
 
@@ -84,9 +84,9 @@ fun LoginScreen (
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (errorMessage != null) {
+        if (!errorMessage.isNullOrEmpty()) {
             Text(
-                text = errorMessage!!,
+                text = errorMessage ?: "Terjadi kesalahan yang tidak diketahui.",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.fillMaxWidth()
             )

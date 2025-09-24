@@ -2,46 +2,57 @@ package com.example.melon_monitoring_and_automation.ui.screen.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
-import com.example.melon_monitoring_and_automation.domain.model.HydroponicData
-import com.example.melon_monitoring_and_automation.domain.usecase.GetHistoricalHydroponicDataUseCase
+import com.example.melon_monitoring_and_automation.domain.model.SensorReading
+import com.example.melon_monitoring_and_automation.domain.usecase.GetHistoricalDataUseCase
+import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val hydroponicRepository: HydroponicRepository
+    private val getHistoricalDataUseCase: GetHistoricalDataUseCase
 ) : ViewModel() {
 
-    private val _historicalData = MutableStateFlow<List<HydroponicData>>(emptyList())
-    val historicalData: StateFlow<List<HydroponicData>> = _historicalData.asStateFlow()
+    private val _historicalDataState =
+        MutableStateFlow<UiState<List<Pair<Long, SensorReading>>>>(UiState.Loading)
+    val historicalDataState: StateFlow<UiState<List<Pair<Long, SensorReading>>>> =
+        _historicalDataState.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    fun fetchHistoricalData(userId: String, systemId: String, startTime: Long, endTime: Long) {
+    fun loadHistoricalData(
+        greenhouseId: String,
+        startTimestamp: Long? = null,
+        endTimestamp: Long? = null
+    ) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-            try {
-                val firebaseData = hydroponicRepository.getHistoricalHydroponicDataFromFirebase(userId, systemId, startTime, endTime)
-                firebaseData.collect { data ->
-                    _historicalData.value = data
-                    _isLoading.value = false
+            getHistoricalDataUseCase(greenhouseId)
+                .onStart { _historicalDataState.value = UiState.Loading }
+                .catch { e ->
+                    _historicalDataState.value = UiState.Error(e.message ?: "Terjadi kesalahan")
                 }
-
-            } catch (e: Exception) {
-                _errorMessage.value = "Gagal memuat riwayat data: ${e.message}"
-                _isLoading.value = false
-            }
+                .collect { allData ->
+                    val filteredData = if (startTimestamp != null && endTimestamp != null) {
+                        allData.filter { (timestamp, _) ->
+                            timestamp >= startTimestamp && timestamp <= endTimestamp
+                        }
+                    } else {
+                        allData
+                    }
+                    _historicalDataState.value = UiState.Success(filteredData)
+                }
         }
     }
+
+    fun clearError() {
+        _historicalDataState.value = UiState.Loading
+    }
 }
+

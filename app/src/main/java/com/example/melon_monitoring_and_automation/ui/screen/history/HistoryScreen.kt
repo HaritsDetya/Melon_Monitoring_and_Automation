@@ -1,5 +1,7 @@
 package com.example.melon_monitoring_and_automation.ui.screen.history
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,31 +11,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.melon_monitoring_and_automation.SharedViewModel
+import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import com.example.melon_monitoring_and_automation.ui.components.ErrorDialog
 import com.example.melon_monitoring_and_automation.ui.components.LoadingIndicator
+import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel(),
-    userId: String,
-    systemId: String
+    sharedViewModel: SharedViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(userId, systemId) {
-        if (userId.isNotEmpty() && systemId.isNotEmpty()) {
-            val endTime = System.currentTimeMillis()
-            val startTime = endTime - (7 * 24 * 60 * 60 * 1000)
-            viewModel.fetchHistoricalData(userId, systemId, startTime, endTime)
+    val historicalDataState by viewModel.historicalDataState.collectAsState()
+    val activeGreenhouseId by sharedViewModel.activeGreenhouseId.collectAsState()
+
+    LaunchedEffect(activeGreenhouseId) {
+        if (activeGreenhouseId != null) {
+//            val today = System.currentTimeMillis()
+//            val startOfDay = today - (today % (24 * 60 * 60 * 1000))
+//            val endOfDay = startOfDay + (24 * 60 * 60 * 1000) - 1
+            viewModel.loadHistoricalData(activeGreenhouseId!!)
         }
     }
-
-    val historicalData by viewModel.historicalData.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -44,35 +49,59 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp, 8.dp, 16.dp, 16.dp),
-            contentAlignment = Alignment.Center
+                .padding(16.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
-            when {
-                isLoading -> LoadingIndicator()
-                errorMessage != null -> ErrorDialog(message = errorMessage!!) {
-                }
-                historicalData.isNotEmpty() -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(historicalData) { data ->
-                            Card(
+            if (activeGreenhouseId != null) {
+                when (historicalDataState) {
+                    is UiState.Loading -> LoadingIndicator()
+                    is UiState.Error -> {
+                        val message = (historicalDataState as UiState.Error).message
+                        ErrorDialog(message = message) {
+                            viewModel.clearError() // ✅ reset setelah dialog ditutup
+                        }
+                    }
+                    is UiState.Success -> {
+                        val historicalData = (historicalDataState as UiState.Success).data
+                        if (historicalData.isNotEmpty()) {
+                            LazyColumn(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Waktu: ${SimpleDateFormat("dd/MM HH:mm:ss", Locale.getDefault()).format(Date(data.timestamp))}")
-                                    Text("Suhu: ${data.temperature}°C, Kelembapan: ${data.humidity}%")
-                                    Text("pH: ${String.format("%.2f", data.ph)}, EC: ${String.format("%.2f", data.ec)} mS/cm")
-                                    Text("Level Air: ${data.waterLevel}")
+                                items(
+                                    items = historicalData,
+                                    key = { it.first } // ✅ pakai timestamp sebagai key
+                                ) { (timestamp, data) ->
+                                    HistoryItemCard(timestamp, data)
                                 }
                             }
+                        } else {
+                            Text("Tidak ada riwayat data yang tersedia.")
                         }
                     }
                 }
-                else -> Text("Tidak ada riwayat data yang tersedia.")
+            } else {
+                Text("Pilih Greenhouse untuk melihat riwayat data.")
             }
+        }
+    }
+}
+
+@Composable
+private fun HistoryItemCard(timestamp: Long, data: SensorReading) {
+    val formattedDate = remember(timestamp) {
+        SimpleDateFormat("dd/MM HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Waktu: $formattedDate")
+            Text("Suhu: ${data.temperature}°C, Kelembapan: ${data.humidity}%")
+            Text("pH: ${"%.2f".format(data.ph)}, EC: ${"%.2f".format(data.ec)} mS/cm")
+            Text("Level Air: ${data.waterLevel}")
         }
     }
 }

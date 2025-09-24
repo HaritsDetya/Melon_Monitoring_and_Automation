@@ -1,53 +1,62 @@
 package com.example.melon_monitoring_and_automation.domain.usecase
 
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
-import com.example.melon_monitoring_and_automation.domain.model.ControlData
-import com.example.melon_monitoring_and_automation.domain.model.HydroponicData
+import com.example.melon_monitoring_and_automation.domain.model.Device
+import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
-class GetRealtimeHydroponicDataUseCase @Inject constructor(
+// Perlu mengubah parameter untuk menyesuaikan perubahan di repository
+class GetRealtimeSensorDataUseCase @Inject constructor(
     private val repository: HydroponicRepository
 ) {
-    operator fun invoke(userId: String, systemId: String): Flow<HydroponicData> {
-        return repository.getRealtimeHydroponicData(userId, systemId)
+    operator fun invoke(greenhouseId: String): Flow<Pair<String, SensorReading>?> {
+        return repository.getLatestSensorData(greenhouseId)
     }
 }
 
-class GetRealtimeControlDataUseCase @Inject constructor(
+// Perlu mengubah parameter untuk menyesuaikan perubahan di repository
+class GetHistoricalDataUseCase @Inject constructor(
     private val repository: HydroponicRepository
 ) {
-    operator fun invoke(userId: String, systemId: String) : Flow<ControlData> {
-        return repository.getRealtimeControlData(userId, systemId)
+    // ✅ PERBAIKAN: Hapus parameter tanggal
+    operator fun invoke(greenhouseId: String): Flow<List<Pair<Long, SensorReading>>> {
+        return repository.getHistoricalSensorData(greenhouseId)
     }
 }
 
-class GetHistoricalHydroponicDataUseCase @Inject constructor(
+// Perlu mengubah parameter untuk menyesuaikan perubahan di repository
+class GetDeviceStatusUseCase @Inject constructor(
     private val repository: HydroponicRepository
 ) {
-    operator fun invoke(userId: String, systemId: String, startTime: Long, endTime: Long): Flow<List<HydroponicData>> {
-        return repository.getHistoricalHydroponicDataFromLocal(startTime, endTime)
-            .onEach {
-                val firebaseData = repository.getHistoricalHydroponicDataFromFirebase(userId, systemId, startTime, endTime).first()
-                repository.syncHistoricalDataToLocal(firebaseData)
-            }
+    operator fun invoke(greenhouseId: String, deviceId: String): Flow<Boolean?> {
+        return repository.getDeviceStatus(greenhouseId, deviceId)
     }
 }
 
-class SetDeviceControlUseCase @Inject constructor(
+// Perlu mengubah parameter untuk menyesuaikan perubahan di repository
+class SetDeviceStatusUseCase @Inject constructor(
     private val repository: HydroponicRepository
 ) {
-    suspend operator fun invoke(userId: String, systemId: String, device: String, status: Boolean) {
-        repository.setDeviceControl(userId, systemId, device, status)
+    suspend operator fun invoke(greenhouseId: String, deviceId: String, status: Boolean) {
+        repository.updateDeviceStatus(greenhouseId, deviceId, status)
     }
 }
 
+// Tidak perlu diubah
+class GetGreenhouseDevicesUseCase @Inject constructor(
+    private val repository: HydroponicRepository
+) {
+    operator fun invoke(greenhouseId: String): Flow<List<Device>> {
+        return repository.getGreenhouseDevices(greenhouseId)
+    }
+}
+
+// Perlu mengubah parameter untuk menyesuaikan perubahan di repository
 class SetAutomaticSettingUseCase @Inject constructor(
     private val repository: HydroponicRepository
 ) {
-    suspend operator fun invoke(userId: String, systemId: String, setting: String, value: Any) {
-        repository.setAutomaticSetting(userId, systemId, setting, value)
+    suspend operator fun invoke(greenhouseId: String, deviceId: String, setting: String, value: Any) {
+        repository.setAutomaticSetting(greenhouseId, deviceId, setting, value)
     }
 }

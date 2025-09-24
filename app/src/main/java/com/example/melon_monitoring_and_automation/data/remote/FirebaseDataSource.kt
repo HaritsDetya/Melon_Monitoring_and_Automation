@@ -1,187 +1,232 @@
 package com.example.melon_monitoring_and_automation.data.remote
 
-import com.example.melon_monitoring_and_automation.data.local.UserModel
-import com.example.melon_monitoring_and_automation.domain.model.ControlData
+import com.example.melon_monitoring_and_automation.domain.model.Device
+import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
+import com.example.melon_monitoring_and_automation.domain.model.SensorReading
+import com.example.melon_monitoring_and_automation.domain.model.User
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseException
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
 import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class FirebaseDataSource @Inject constructor(
-    private val database: FirebaseDatabase
+    private val database: DatabaseReference
 ) {
 
-    private fun getRealtimeDataRef(userId: String, systemId: String): DatabaseReference {
-        return database.getReference("userProfiles/$userId/systems/$systemId/realtimeData")
+    suspend fun getUidByEmail(email: String): String? {
+        val snapshot = database.child("users")
+            .orderByChild("email")
+            .equalTo(email)
+            .get()
+            .await()
+        return snapshot.children.firstOrNull()?.key
     }
 
-    private fun getHistoryDataRef(userId: String, systemId: String): DatabaseReference {
-        return database.getReference("userProfiles/$userId/systems/$systemId/sensorData")
+    suspend fun addGreenhouseMember(greenhouseId: String, memberUid: String) {
+        database.child("greenhouses").child(greenhouseId).child("members").child(memberUid).setValue(true).await()
     }
 
-    private fun getControlRef(userId: String, systemId: String): DatabaseReference {
-        return database.getReference("userProfiles/$userId/systems/$systemId/control")
-    }
+    private fun getGreenhouseRef(greenhouseId: String): DatabaseReference =
+        database.child("greenhouses").child(greenhouseId)
 
-    private fun getUserProfileRef(uid: String): DatabaseReference {
-        return database.getReference("userProfiles/$uid")
-    }
+    // ✅ Perbaikan: Path sekarang langsung ke device
+    private fun getDeviceRef(greenhouseId: String, deviceId: String): DatabaseReference =
+        database.child("greenhouses").child(greenhouseId).child("devices").child(deviceId)
 
-    fun getRealtimeSensorData(userId: String, systemId: String): Flow<SensorReading> = callbackFlow {
+    private fun getDeviceStatusRef(greenhouseId: String, deviceId: String): DatabaseReference =
+        database.child("device_status").child(greenhouseId).child(deviceId).child("status")
+
+    private fun getSensorReadingsRef(greenhouseId: String): DatabaseReference =
+        database.child("sensor_readings").child(greenhouseId)
+
+    // ✅ Perbaikan: Ambil device langsung dari node greenhouse
+    private fun getGreenhouseDevicesRef(greenhouseId: String): DatabaseReference =
+        database.child("greenhouses").child(greenhouseId).child("devices")
+
+    private fun getUserProfileRef(uid: String): DatabaseReference =
+        database.child("users").child(uid)
+
+    // =====================
+    // User
+    // =====================
+    // Fungsi ini tidak perlu diubah, sudah sesuai.
+    fun getUserProfile(uid: String): Flow<User?> = callbackFlow {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val sensorReading = snapshot.getValue(SensorReading::class.java)
-
-                if (sensorReading != null) {
-                    val updateSensorReading = sensorReading.copy(timestamp = System.currentTimeMillis())
-                    trySend(updateSensorReading)
-                } else {
-                    close(Exception("Data sensor tidak ditemukan atau gagal dikonversi."))
-                }
+                trySend(snapshot.getValue(User::class.java))
             }
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
-            }
-        }
-
-        getRealtimeDataRef(userId, systemId).addValueEventListener(listener)
-        awaitClose{ getRealtimeDataRef(userId, systemId).removeEventListener(listener) }
-    }
-
-    fun getRealtimeControlData(userId: String, systemId: String): Flow<ControlData> = callbackFlow {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val controlData = snapshot.getValue(ControlData::class.java)
-                if (controlData != null) {
-                    trySend(controlData)
-                } else {
-                    close(Exception("Data control tidak ditemukan atau gagal dikonversi."))
-                }
-            }
-            override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
-            }
-        }
-        getControlRef(userId, systemId).addValueEventListener(listener)
-        awaitClose{ getControlRef(userId, systemId).removeEventListener(listener) }
-    }
-
-    fun getHistoricalSensorData(userId: String, systemId: String, starTime: Long, endTime: Long): Flow<List<SensorReading>> = callbackFlow {
-        val query = getHistoryDataRef(userId, systemId)
-            .orderByKey()
-            .startAt(starTime.toString())
-            .endAt(endTime.toString())
-
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val dataList = snapshot.children.mapNotNull { it.getValue(SensorReading::class.java) }
-                trySend(dataList)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
-            }
-        }
-        query.addListenerForSingleValueEvent(listener)
-        awaitClose{ query.removeEventListener(listener) }
-    }
-
-    suspend fun setDeviceStatus(userId: String, systemId: String, device: String, status: Boolean) {
-        try {
-            getControlRef(userId, systemId).child(device).setValue(status).await()
-            println("Perintah kontrol '$device' dengan status '$status' berhasil dikirim")
-        } catch (e: Exception){
-            println("Gagal mengirim perintah kontrol untuk '$device': ${e.message}")
-        }
-    }
-
-    suspend fun setAutomaticSetting(userId: String, systemId: String, setting: String, value: Any) {
-        try {
-            getControlRef(userId, systemId).child("autoSetting").child(setting).setValue(value).await()
-            println("Pengaturan otomatis '$setting' dengan nilai '$value' berhasil dikirim")
-        } catch (e: Exception) {
-            println("Gagal mengirim pengaturan otomatis untuk '$setting': ${e.message}")
-        }
-    }
-
-    suspend fun saveUserProfile(user: UserModel) {
-        try {
-            getUserProfileRef(user.uid).setValue(user).await()
-            println("Profil pengguna ${user.username} berhasil disimpan.")
-        } catch (e: Exception) {
-            println("Gagal menyimpan profil pengguna ${e.message}")
-        }
-    }
-
-    suspend fun saveSystemData(userId: String, systemId: String) {
-        try {
-            val defaultSystemData = mapOf(
-                "sensorData" to mapOf(
-                    "ec" to 0.0,
-                    "humidity" to 0.0,
-                    "ph" to 0.0,
-                    "temperature" to 0.0,
-                    "waterLevel" to "Normal",
-                    "timestamp" to System.currentTimeMillis()
-                ),
-                "control" to mapOf(
-                    "waterPump" to false,
-                    "nutrientPumpA" to false,
-                    "phThreshold" to 6.0,
-                    "irrigationInterval" to 15
-                )
-            )
-            database.getReference("userProfiles/$userId/systems/$systemId").setValue(defaultSystemData).await()
-        } catch (e: Exception) {
-            println("Gagal menyimpan data sistem awal: ${e.message}")
-        }
-    }
-
-    suspend fun saveRealtimeData(userId: String, systemId: String, sensorReading: SensorReading) {
-        try {
-            getRealtimeDataRef(userId, systemId).setValue(sensorReading).await()
-            println("Data realtime berhasil diperbarui")
-        } catch (e: Exception) {
-            println("Gagal memperbarui data realtime: ${e.message}")
-        }
-    }
-
-    suspend fun saveSensorReadingHistory(userId: String, systemId: String, sensorReading: SensorReading) {
-        val timestamp = System.currentTimeMillis()
-        val timestampKey = System.currentTimeMillis().toString()
-        val sensorHistoryRef = getHistoryDataRef(userId, systemId).child(timestampKey)
-        val dataWithTimestamp = sensorReading.copy(timestamp = timestamp)
-        try {
-            sensorHistoryRef.setValue(dataWithTimestamp).await()
-            println("Data sensor berhasil disimpan ke riwayat dengan timestamp")
-        } catch (e: Exception) {
-            println("Gagal menyimpan data sensor ke riwayat: ${e.message}")
-        }
-    }
-
-    fun getUserProfile(uid: String): Flow<UserModel?> = callbackFlow {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val userProfile = snapshot.getValue(UserModel::class.java)
-                trySend(userProfile)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                println("Firebase database error: ${error.message}")
             }
         }
         getUserProfileRef(uid).addValueEventListener(listener)
         awaitClose { getUserProfileRef(uid).removeEventListener(listener) }
+    }
+
+    // Fungsi ini tidak perlu diubah, sudah sesuai.
+    fun getUsersGreenhouses(greenhouseIds: List<String>): Flow<List<Greenhouse>> = callbackFlow {
+        if (greenhouseIds.isEmpty()) {
+            trySend(emptyList())
+            awaitClose {}
+            return@callbackFlow
+        }
+        val list = mutableListOf<Greenhouse>()
+        greenhouseIds.forEach { greenhouseId ->
+            val ref = database.child("greenhouses").child(greenhouseId)
+            val listener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    snapshot.getValue(Greenhouse::class.java)?.let { greenhouse ->
+                        list.add(greenhouse.copy(id = snapshot.key ?: ""))
+                        trySend(list.toList())
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {
+
+                }
+            }
+            ref.addValueEventListener(listener)
+            awaitClose { ref.removeEventListener(listener) }
+        }
+    }
+
+    suspend fun saveUserProfile(user: User) {
+        database.child("users").child(user.uid).setValue(user).await()
+    }
+
+    // =====================
+    // Sensor Data
+    // =====================
+    // ✅ Perbaikan: Menggunakan `orderByKey().limitToLast(1)` karena kita menggunakan Push ID
+    fun getRealtimeSensorData(greenhouseId: String): Flow<Pair<String, SensorReading>?> =
+        callbackFlow {
+            val ref = getSensorReadingsRef(greenhouseId).orderByKey().limitToLast(1)
+            val listener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val latestNode = snapshot.children.firstOrNull()
+                    val key = latestNode?.key
+                    val reading = latestNode?.getValue(SensorReading::class.java)
+                    if (key != null && reading != null) {
+                        trySend(key to reading)
+                    } else {
+                        trySend(null)
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    close(error.toException())
+                }
+            }
+            ref.addValueEventListener(listener)
+            awaitClose { ref.removeEventListener(listener) }
+        }
+
+    fun getHistoricalSensorDataFromFirebase(
+        greenhouseId: String
+    ): Flow<List<Pair<Long, SensorReading>>> = callbackFlow {
+        val ref = getSensorReadingsRef(greenhouseId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { child ->
+                    val reading = child.getValue(SensorReading::class.java)
+                    if (reading != null && reading.recorded_at != null) {
+                        // ✅ PERBAIKAN: Gunakan recorded_at langsung karena sudah Long
+                        val timestamp = reading.recorded_at
+                        timestamp to reading
+                    } else {
+                        null
+                    }
+                }
+                trySend(list.sortedByDescending { it.first })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    // ✅ Perbaikan: Menggunakan push() untuk menambahkan data secara otomatis
+    suspend fun saveSensorReading(
+        greenhouseId: String,
+        sensorReading: SensorReading
+    ) {
+        getSensorReadingsRef(greenhouseId).push().setValue(sensorReading).await()
+    }
+
+    // =====================
+    // Device
+    // =====================
+    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
+    fun getDeviceStatus(greenhouseId: String, deviceId: String): Flow<Boolean?> = callbackFlow {
+        val ref = getDeviceStatusRef(greenhouseId, deviceId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(snapshot.getValue(Boolean::class.java))
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    // ✅ Perbaikan: Path ref ke devices sekarang di dalam greenhouse
+    fun getGreenhouseDevices(greenhouseId: String): Flow<List<Device>> = callbackFlow {
+        val ref = getGreenhouseDevicesRef(greenhouseId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val devices = snapshot.children.mapNotNull { child ->
+                    // ✅ Perbaikan: Tambahkan pemeriksaan null
+                    try {
+                        child.getValue(Device::class.java)?.copy(id = child.key ?: "")
+                    } catch (e: DatabaseException) {
+                        println("Error deserializing device: ${e.message}")
+                        null
+                    }
+                }
+                trySend(devices)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                trySend(emptyList())
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
+    suspend fun setDeviceStatus(greenhouseId: String, deviceId: String, status: Boolean) {
+        getDeviceRef(greenhouseId, deviceId).child("status").setValue(status).await()
+    }
+
+    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
+    suspend fun setAutomaticSetting(greenhouseId: String, deviceId: String, setting: String, value: Any) {
+        database.child("greenhouses/$greenhouseId/devices/$deviceId/config").child(setting).setValue(value).await()
+    }
+
+    // =====================
+    // Greenhouse
+    // =====================
+    suspend fun saveGreenhouse(greenhouseId: String, greenhouse: Greenhouse) {
+        getGreenhouseRef(greenhouseId).setValue(greenhouse).await()
+    }
+
+    suspend fun addGreenhouseToUser(uid: String, greenhouseId: String) {
+        database.child("users/$uid/greenhouses").child(greenhouseId).setValue(true).await()
     }
 }
