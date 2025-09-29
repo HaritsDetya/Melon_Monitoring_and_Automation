@@ -1,30 +1,24 @@
 package com.example.melon_monitoring_and_automation.data.repository
 
-import android.util.Log
 import com.example.melon_monitoring_and_automation.data.local.DeviceDao
 import com.example.melon_monitoring_and_automation.data.local.GreenhouseDao
 import com.example.melon_monitoring_and_automation.data.local.SensorHistoryDao
 import com.example.melon_monitoring_and_automation.data.local.UserDao
-import com.example.melon_monitoring_and_automation.data.local.toDomain
 import com.example.melon_monitoring_and_automation.data.local.toEntity
 import com.example.melon_monitoring_and_automation.data.local.toModel
 import com.example.melon_monitoring_and_automation.data.remote.FirebaseDataSource
 import com.example.melon_monitoring_and_automation.di.DispatcherProvider
 import com.example.melon_monitoring_and_automation.domain.model.Device
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
+import com.example.melon_monitoring_and_automation.domain.model.Plant
 import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import com.example.melon_monitoring_and_automation.domain.model.User
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onEach
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.util.Locale
-import java.util.TimeZone
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -96,7 +90,6 @@ class HydroponicRepositoryImpl @Inject constructor(
             .onEach { pair ->
                 if (pair != null) {
                     val (key, reading) = pair
-                    // ✅ PERBAIKAN: Gunakan recorded_at yang sudah Long, atau Push ID key
                     val timestamp = reading.recorded_at ?: key.substring(1, 14).toLongOrNull() ?: System.currentTimeMillis()
 
                     sensorHistoryDao.insertSensorReading(
@@ -106,55 +99,92 @@ class HydroponicRepositoryImpl @Inject constructor(
             }
             .flowOn(dispatcherProvider.io)
 
-    // ✅ Perbaikan: Mengubah signature agar cocok dengan interface
     override fun getHistoricalSensorData(
         greenhouseId: String
     ): Flow<List<Pair<Long, SensorReading>>> = flow {
-        // Ambil semua data dari Firebase
         firebaseDataSource.getHistoricalSensorDataFromFirebase(greenhouseId)
             .collect { allData ->
-                // Emit semua data ke use case
                 emit(allData)
             }
     }.flowOn(dispatcherProvider.io)
 
-    // ✅ Perbaikan: Tidak perlu timestamp dari client. Firebase akan meng-generate Push ID.
     override suspend fun saveSensorReading(greenhouseId: String, sensorReading: SensorReading) {
-        firebaseDataSource.saveSensorReading(greenhouseId, sensorReading)
-        // Note: Untuk menyimpan ke cache, kita perlu mendapatkan Push ID yang dibuat oleh Firebase.
-        // Ini bisa dilakukan dengan mengamati data dari Firebase setelah penulisan, atau
-        // menggunakan Firebase Functions untuk memproses penulisan.
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.saveSensorReading(greenhouseId, sensorReading)
+            sensorHistoryDao.insertSensorReading(sensorReading.toEntity(greenhouseId, sensorReading.recorded_at ?: System.currentTimeMillis()))
+        }
     }
 
 
     // DEVICE
-    // ✅ Perbaikan: Menambahkan greenhouseId sebagai parameter
-    override fun getDeviceStatus(greenhouseId: String, deviceId: String): Flow<Boolean?> =
-        firebaseDataSource.getDeviceStatus(greenhouseId, deviceId)
 
-    // ✅ Perbaikan: Tidak perlu diubah, sudah sesuai.
     override fun getGreenhouseDevices(greenhouseId: String): Flow<List<Device>> = flow {
         val cached = deviceDao.getDevicesByGreenhouse(greenhouseId).map { it.toModel() }
         emit(cached)
 
         firebaseDataSource.getGreenhouseDevices(greenhouseId)
             .collect { devices ->
-                // Untuk setiap device dari Firebase, kita perlu tahu statusnya (dari device_status node)
-                // dan meng-update-nya ke cache lokal. Ini akan dilakukan dengan flow yang terpisah.
-                // Untuk saat ini, kita akan simpan device tanpa status.
-                val entities = devices.map { it.toEntity(greenhouseId, false) } // ✅ Perbaikan: Berikan greenhouseId dan status default
+                val entities = devices.map { it.toEntity(greenhouseId, it.status) }
                 deviceDao.insertAll(entities)
                 emit(devices)
             }
     }.flowOn(dispatcherProvider.io)
 
-    // ✅ Perbaikan: Menambahkan greenhouseId sebagai parameter
     override suspend fun updateDeviceStatus(greenhouseId: String, deviceId: String, status: Boolean) {
-        firebaseDataSource.setDeviceStatus(greenhouseId, deviceId, status)
-        deviceDao.updateStatus(deviceId, status)
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.setDeviceStatus(greenhouseId, deviceId, status)
+            deviceDao.updateStatus(deviceId, status)
+        }
     }
 
-    // ✅ Perbaikan: Menambahkan greenhouseId sebagai parameter
+    override suspend fun addDevice(greenhouseId: String, device: Device) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.addDevice(greenhouseId, device)
+        }
+    }
+
+    override suspend fun editDevice(greenhouseId: String, device: Device) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.editDevice(greenhouseId, device)
+        }
+    }
+
+    override suspend fun deleteDevice(greenhouseId: String, deviceId: String) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.deleteDevice(greenhouseId, deviceId)
+        }
+    }
+
+    // Plant
+
+    override fun getGreenhousePlants(greenhouseId: String): Flow<List<Plant>> = flow {
+        val cached = emptyList<Plant>()
+        emit(cached)
+
+        firebaseDataSource.getGreenhousePlants(greenhouseId)
+            .collect { plants ->
+                emit(plants)
+            }
+    }.flowOn(dispatcherProvider.io)
+
+    override suspend fun addPlant(greenhouseId: String, plant: Plant) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.addPlant(greenhouseId, plant)
+        }
+    }
+
+    override suspend fun editPlant(greenhouseId: String, plant: Plant) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.editPlant(greenhouseId, plant)
+        }
+    }
+
+    override suspend fun deletePlant(greenhouseId: String, plantId: String) {
+        withContext(dispatcherProvider.io) {
+            firebaseDataSource.deletePlant(greenhouseId, plantId)
+        }
+    }
+
     override suspend fun setAutomaticSetting(greenhouseId: String, deviceId: String, setting: String, value: Any) {
         firebaseDataSource.setAutomaticSetting(greenhouseId, deviceId, setting, value)
     }

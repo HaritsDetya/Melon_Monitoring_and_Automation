@@ -2,9 +2,9 @@ package com.example.melon_monitoring_and_automation.ui.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.melon_monitoring_and_automation.SharedViewModel
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
+import com.example.melon_monitoring_and_automation.domain.model.Plant
 import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
 import com.google.firebase.auth.FirebaseAuth
@@ -29,6 +29,9 @@ class DashboardViewModel @Inject constructor(
 
     private val _greenhouses = MutableStateFlow<List<Greenhouse>>(emptyList())
     val greenhouses: StateFlow<List<Greenhouse>> = _greenhouses.asStateFlow()
+
+    private val _plants = MutableStateFlow<List<Plant>>(emptyList())
+    val plants: StateFlow<List<Plant>> = _plants.asStateFlow()
 
     init {
         loadUserGreenhouses()
@@ -59,6 +62,15 @@ class DashboardViewModel @Inject constructor(
                     } else {
                         _sensorDataState.value = UiState.Error("Data sensor kosong")
                     }
+                }
+        }
+    }
+
+    fun loadGreenhousePlants(greenhouseId: String) {
+        viewModelScope.launch {
+            hydroponicRepository.getGreenhousePlants(greenhouseId)
+                .collect { plants ->
+                    _plants.value = plants
                 }
         }
     }

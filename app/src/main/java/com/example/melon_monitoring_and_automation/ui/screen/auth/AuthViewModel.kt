@@ -59,33 +59,15 @@ class AuthViewModel @Inject constructor(
                 }
             }
         }
-        // ✅ Perbaikan: Tambahkan listener saat init
         auth.addAuthStateListener(authStateListener!!)
     }
 
     override fun onCleared() {
         super.onCleared()
-        // ✅ Perbaikan: Hapus listener saat ViewModel dibersihkan
         authStateListener?.let {
             auth.removeAuthStateListener(it)
         }
     }
-
-//    private fun fetchUserProfile(uid: String) {
-//        viewModelScope.launch {
-//            _isLoading.value = true
-//            try {
-//                val userProfile = repository.getUserProfile(uid).firstOrNull()
-//                _currentUser.value = userProfile
-//                _authSuccess.value = userProfile != null
-//            } catch (e: Exception) {
-//                _errorMessage.value = "Gagal memuat profil pengguna: ${e.message}"
-//                _authSuccess.value = false
-//            } finally {
-//                _isLoading.value = false
-//            }
-//        }
-//    }
 
     fun register(username: String, email: String, password: String) {
         _isLoading.value = true
@@ -98,56 +80,50 @@ class AuthViewModel @Inject constructor(
                 firebaseUser?.let {
                     val newGreenhouseId = "gh_${it.uid}"
 
-                    // ✅ Buat data Device, Plant, dan Sensor default
-                    val defaultDevices = mapOf(
-                        "dev_01" to Device(
-                            id = "dev_01",
-                            name = "Pompa Nutrisi",
-                            type = "pump",
-                            config = null,
-                            status = false,
-                            greenhouseId = newGreenhouseId
-                        ),
-                        "dev_02" to Device(
-                            id = "dev_02",
-                            name = "Lampu LED",
-                            type = "light",
-                            config = mapOf("schedule" to "08:00-20:00"),
-                            status = false,
-                            greenhouseId = newGreenhouseId
-                        )
+                    val defaultDevice1 = Device(
+                        id = "dev_01",
+                        name = "Pompa Nutrisi",
+                        type = "pump",
+                        config = emptyMap(),
+                        status = false,
+                        greenhouseId = newGreenhouseId
                     )
 
-                    val defaultPlants = mapOf(
-                        "pl_01" to Plant(
-                            id = "pl_01",
-                            name = "Melon 01",
-                            type = "Melon Golden",
-                            planted_at = "2025-08-20"
-                        )
+                    val defaultDevice2 = Device(
+                        id = "dev_02",
+                        name = "Lampu LED",
+                        type = "light",
+                        config = mapOf("schedule" to "08:00-20:00"),
+                        status = false,
+                        greenhouseId = newGreenhouseId
+                    )
+
+                    val defaultPlant = Plant(
+                        id = "pl_01",
+                        name = "Melon 01",
+                        type = "Melon Golden",
+                        planted_at = "2025-08-20",
+                        greenhouseId = newGreenhouseId
                     )
 
                     val defaultSensorReading = SensorReading(
-                        temperature = 25.0,
-                        humidity = 60.0,
-                        ph = 6.0,
-                        ec = 1.5,
-                        waterLevel = "Normal",
-                        light = 300.0,
+                        temperature = 0.0,
+                        humidity = 0.0,
+                        ph = 0.0,
+                        ec = 0.0,
+                        light = 0.0,
                         recorded_at = System.currentTimeMillis()
                     )
 
-                    // ✅ Buat objek Greenhouse dengan data default
                     val newGreenhouse = Greenhouse(
                         id = newGreenhouseId,
                         name = "Greenhouse Utama",
                         location = "Yogyakarta",
                         owner_id = it.uid,
-                        devices = defaultDevices, // ✅ Masukkan data devices default
-                        plants = defaultPlants // ✅ Masukkan data plants default
+                        devices = mapOf(defaultDevice1.id to defaultDevice1, defaultDevice2.id to defaultDevice2),
+                        plants = mapOf(defaultPlant.id to defaultPlant)
                     )
 
-                    // ✅ Buat objek User
                     val newUser = User(
                         uid = it.uid,
                         email = email,
@@ -155,7 +131,6 @@ class AuthViewModel @Inject constructor(
                         greenhouses = mapOf(newGreenhouseId to true)
                     )
 
-                    // ✅ Simpan data-data tersebut ke Firebase
                     repository.saveGreenhouse(newGreenhouseId, newGreenhouse)
                     repository.saveUserProfile(newUser)
                     repository.saveSensorReading(newGreenhouseId, defaultSensorReading)
@@ -179,15 +154,12 @@ class AuthViewModel @Inject constructor(
         _authSuccess.value = false
         viewModelScope.launch {
             try {
-                // 1. Lakukan otentikasi
                 auth.signInWithEmailAndPassword(email, password).await()
 
-                // 2. Jika otentikasi berhasil, ambil UID dan profil pengguna
                 val uid = auth.currentUser?.uid
                 if (uid != null) {
                     val userProfile = repository.getUserProfile(uid).firstOrNull()
 
-                    // 3. Perbarui StateFlow berdasarkan profil yang berhasil diambil
                     _currentUser.value = userProfile
                     _authSuccess.value = userProfile != null
                 } else {
@@ -195,7 +167,6 @@ class AuthViewModel @Inject constructor(
                     _authSuccess.value = false
                 }
             } catch (e: Exception) {
-                // Tangani error otentikasi
                 _errorMessage.value = mapFirebaseError(e)
                 _authSuccess.value = false
             } finally {
@@ -205,13 +176,11 @@ class AuthViewModel @Inject constructor(
     }
 
     fun logout() {
-        // ✅ Perbaikan: Hapus listener secara manual sebelum sign-out
         authStateListener?.let {
             auth.removeAuthStateListener(it)
         }
         auth.signOut()
 
-        // Batalkan operasi lain yang masih berjalan
         viewModelScope.coroutineContext.cancelChildren()
 
         _currentUser.value = null

@@ -16,9 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,7 +34,10 @@ import com.example.melon_monitoring_and_automation.ui.screen.dashboard.Dashboard
 import com.example.melon_monitoring_and_automation.ui.screen.history.HistoryScreen
 import com.example.melon_monitoring_and_automation.SharedViewModel
 import com.example.melon_monitoring_and_automation.domain.model.User
+import com.example.melon_monitoring_and_automation.ui.screen.addDevice.AddDeviceScreen
 import com.example.melon_monitoring_and_automation.ui.screen.addGreenhouse.AddGreenhouseScreen
+import com.example.melon_monitoring_and_automation.ui.screen.addPlant.AddPlantScreen
+import com.example.melon_monitoring_and_automation.ui.screen.addSensorData.AddSensorDataScreen
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Home)
@@ -44,7 +45,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object History : Screen("history", "Riwayat", Icons.Default.List)
     object Login : Screen("login", "Login")
     object Register : Screen("register", "Register")
+
     object AddGreenhouse : Screen("add_greenhouse", "Tambah Greenhouse", Icons.Default.Add)
+    object AddDevice : Screen("add_device", "Tambah Perangkat", Icons.Default.Add)
+    object AddPlant : Screen("add_plant", "Tambah Tanaman", Icons.Default.Add)
+    object AddSensorData : Screen("add_sensor_data", "Tambah Data Sensor", Icons.Default.Add)
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -68,10 +73,6 @@ fun AppNavHost(
             RegisterScreen(navController = navController)
         }
 
-        composable(Screen.AddGreenhouse.route) {
-            AddGreenhouseScreen(navController = navController)
-        }
-
         navigation(
             startDestination = Screen.Dashboard.route,
             route = "main_app_graph"
@@ -91,7 +92,10 @@ fun AppNavHost(
                 MainScreen(
                     navController = navController,
                 ) {
-                    ControlScreen(sharedViewModel = sharedViewModel)
+                    ControlScreen(
+                        sharedViewModel = sharedViewModel,
+                        navController = navController
+                    )
                 }
             }
             composable(Screen.History.route) {
@@ -100,6 +104,18 @@ fun AppNavHost(
                 ) {
                     HistoryScreen(sharedViewModel = sharedViewModel)
                 }
+            }
+            composable(Screen.AddGreenhouse.route) {
+                AddGreenhouseScreen(navController = navController)
+            }
+            composable(Screen.AddSensorData.route) {
+                AddSensorDataScreen(navController = navController)
+            }
+            composable(Screen.AddPlant.route) {
+                AddPlantScreen(navController = navController)
+            }
+            composable(Screen.AddDevice.route) {
+                AddDeviceScreen(navController = navController)
             }
         }
     }

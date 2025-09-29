@@ -40,7 +40,6 @@ object AppModule {
             AppDatabase::class.java,
             "hydroponic_database"
         )
-            // ✅ Tambahkan opsi ini untuk menghapus dan membuat ulang database
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -67,12 +66,10 @@ object AppModule {
         return FirebaseDatabase.getInstance().reference
     }
 
-    // ✅ Perbaikan: Menambahkan DispatcherProvider sebagai dependency
     @Provides
     @Singleton
     fun provideDispatcherProvider(): DispatcherProvider = DefaultDispatcherProvider()
 
-    // ✅ Perbaikan: Memastikan semua dependencies yang diperlukan disediakan
     @Provides
     @Singleton
     fun provideHydroponicRepository(

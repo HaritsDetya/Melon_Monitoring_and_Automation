@@ -30,7 +30,7 @@ data class GreenhouseEntity(
 @Entity(tableName = "devices")
 data class DeviceEntity(
     @PrimaryKey val id: String,
-    val greenhouseId: String, // ✅ Perbaikan: Tambah greenhouseId sebagai foreign key
+    val greenhouseId: String,
     val name: String,
     val type: String,
     val status: Boolean = false
@@ -45,7 +45,6 @@ data class SensorHistoryEntity(
     val humidity: Double,
     val ph: Double,
     val ec: Double,
-    val waterLevel: String?,
     val light: Double,
     val recorded_at: Long?
 )
@@ -97,7 +96,6 @@ interface DeviceDao {
 
 @Dao
 interface SensorHistoryDao {
-    // ✅ PERBAIKAN: Mengubah parameter ke Long
     @Query("SELECT * FROM sensor_history WHERE greenhouseId = :greenhouseId AND timestamp BETWEEN :startDate AND :endDate")
     suspend fun getSensorReadingsBetween(greenhouseId: String, startDate: Long, endDate: Long): List<SensorHistoryEntity>
 
@@ -115,7 +113,7 @@ interface SensorHistoryDao {
 
 @Database(
     entities = [UserEntity::class, GreenhouseEntity::class, DeviceEntity::class, SensorHistoryEntity::class],
-    version = 5, // ✅ Naikkan nomor versi
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -144,9 +142,11 @@ fun Device.toEntity(greenhouseId: String, status: Boolean): DeviceEntity = Devic
 
 fun DeviceEntity.toModel(): Device = Device(
     id = id,
+    greenhouseId = greenhouseId,
     name = name,
     type = type,
-    greenhouseId = greenhouseId
+    status = status,
+    config = null
 )
 
 // SensorReading
@@ -158,7 +158,6 @@ fun SensorReading.toEntity(greenhouseId: String, timestamp: Long): SensorHistory
         humidity = humidity,
         ph = ph,
         ec = ec,
-        waterLevel = waterLevel,
         light = light,
         recorded_at = recorded_at
     )
@@ -169,6 +168,5 @@ fun SensorHistoryEntity.toDomain(): SensorReading =
         humidity = humidity,
         ph = ph,
         ec = ec,
-        waterLevel = waterLevel,
         light = light
     )

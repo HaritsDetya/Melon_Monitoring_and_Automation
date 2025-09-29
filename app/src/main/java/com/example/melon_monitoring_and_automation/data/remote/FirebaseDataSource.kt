@@ -2,6 +2,7 @@ package com.example.melon_monitoring_and_automation.data.remote
 
 import com.example.melon_monitoring_and_automation.domain.model.Device
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
+import com.example.melon_monitoring_and_automation.domain.model.Plant
 import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import com.example.melon_monitoring_and_automation.domain.model.User
 import com.google.firebase.database.DataSnapshot
@@ -13,10 +14,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.util.Locale
-import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,19 +38,17 @@ class FirebaseDataSource @Inject constructor(
     private fun getGreenhouseRef(greenhouseId: String): DatabaseReference =
         database.child("greenhouses").child(greenhouseId)
 
-    // ✅ Perbaikan: Path sekarang langsung ke device
     private fun getDeviceRef(greenhouseId: String, deviceId: String): DatabaseReference =
         database.child("greenhouses").child(greenhouseId).child("devices").child(deviceId)
-
-    private fun getDeviceStatusRef(greenhouseId: String, deviceId: String): DatabaseReference =
-        database.child("device_status").child(greenhouseId).child(deviceId).child("status")
 
     private fun getSensorReadingsRef(greenhouseId: String): DatabaseReference =
         database.child("sensor_readings").child(greenhouseId)
 
-    // ✅ Perbaikan: Ambil device langsung dari node greenhouse
     private fun getGreenhouseDevicesRef(greenhouseId: String): DatabaseReference =
         database.child("greenhouses").child(greenhouseId).child("devices")
+
+    private fun getGreenhousePlantsRef(greenhouseId: String): DatabaseReference =
+        database.child("greenhouses").child(greenhouseId).child("plants")
 
     private fun getUserProfileRef(uid: String): DatabaseReference =
         database.child("users").child(uid)
@@ -61,7 +56,7 @@ class FirebaseDataSource @Inject constructor(
     // =====================
     // User
     // =====================
-    // Fungsi ini tidak perlu diubah, sudah sesuai.
+
     fun getUserProfile(uid: String): Flow<User?> = callbackFlow {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -75,7 +70,6 @@ class FirebaseDataSource @Inject constructor(
         awaitClose { getUserProfileRef(uid).removeEventListener(listener) }
     }
 
-    // Fungsi ini tidak perlu diubah, sudah sesuai.
     fun getUsersGreenhouses(greenhouseIds: List<String>): Flow<List<Greenhouse>> = callbackFlow {
         if (greenhouseIds.isEmpty()) {
             trySend(emptyList())
@@ -93,7 +87,7 @@ class FirebaseDataSource @Inject constructor(
                     }
                 }
                 override fun onCancelled(error: DatabaseError) {
-
+                    close(error.toException())
                 }
             }
             ref.addValueEventListener(listener)
@@ -108,7 +102,7 @@ class FirebaseDataSource @Inject constructor(
     // =====================
     // Sensor Data
     // =====================
-    // ✅ Perbaikan: Menggunakan `orderByKey().limitToLast(1)` karena kita menggunakan Push ID
+
     fun getRealtimeSensorData(greenhouseId: String): Flow<Pair<String, SensorReading>?> =
         callbackFlow {
             val ref = getSensorReadingsRef(greenhouseId).orderByKey().limitToLast(1)
@@ -140,7 +134,6 @@ class FirebaseDataSource @Inject constructor(
                 val list = snapshot.children.mapNotNull { child ->
                     val reading = child.getValue(SensorReading::class.java)
                     if (reading != null && reading.recorded_at != null) {
-                        // ✅ PERBAIKAN: Gunakan recorded_at langsung karena sudah Long
                         val timestamp = reading.recorded_at
                         timestamp to reading
                     } else {
@@ -158,7 +151,6 @@ class FirebaseDataSource @Inject constructor(
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    // ✅ Perbaikan: Menggunakan push() untuk menambahkan data secara otomatis
     suspend fun saveSensorReading(
         greenhouseId: String,
         sensorReading: SensorReading
@@ -169,28 +161,12 @@ class FirebaseDataSource @Inject constructor(
     // =====================
     // Device
     // =====================
-    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
-    fun getDeviceStatus(greenhouseId: String, deviceId: String): Flow<Boolean?> = callbackFlow {
-        val ref = getDeviceStatusRef(greenhouseId, deviceId)
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                trySend(snapshot.getValue(Boolean::class.java))
-            }
-            override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
-            }
-        }
-        ref.addValueEventListener(listener)
-        awaitClose { ref.removeEventListener(listener) }
-    }
 
-    // ✅ Perbaikan: Path ref ke devices sekarang di dalam greenhouse
     fun getGreenhouseDevices(greenhouseId: String): Flow<List<Device>> = callbackFlow {
         val ref = getGreenhouseDevicesRef(greenhouseId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val devices = snapshot.children.mapNotNull { child ->
-                    // ✅ Perbaikan: Tambahkan pemeriksaan null
                     try {
                         child.getValue(Device::class.java)?.copy(id = child.key ?: "")
                     } catch (e: DatabaseException) {
@@ -209,14 +185,60 @@ class FirebaseDataSource @Inject constructor(
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
     suspend fun setDeviceStatus(greenhouseId: String, deviceId: String, status: Boolean) {
         getDeviceRef(greenhouseId, deviceId).child("status").setValue(status).await()
     }
 
-    // ✅ Perbaikan: Menambahkan `greenhouseId` sebagai parameter
     suspend fun setAutomaticSetting(greenhouseId: String, deviceId: String, setting: String, value: Any) {
         database.child("greenhouses/$greenhouseId/devices/$deviceId/config").child(setting).setValue(value).await()
+    }
+
+    suspend fun addDevice(greenhouseId: String, device: Device) {
+        database.child("greenhouses/$greenhouseId/devices").child(device.id).setValue(device).await()
+    }
+    suspend fun editDevice(greenhouseId: String, device: Device) {
+        database.child("greenhouses/$greenhouseId/devices").child(device.id).setValue(device).await()
+    }
+    suspend fun deleteDevice(greenhouseId: String, deviceId: String) {
+        database.child("greenhouses/$greenhouseId/devices").child(deviceId).removeValue().await()
+    }
+
+    // =====================
+    // Plant
+    // =====================
+
+    fun getGreenhousePlants(greenhouseId: String): Flow<List<Plant>> = callbackFlow {
+        val ref = getGreenhousePlantsRef(greenhouseId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val plants = snapshot.children.mapNotNull { child ->
+                    try {
+                        child.getValue(Plant::class.java)?.copy(id = child.key ?: "")
+                    } catch (e: DatabaseException) {
+                        println("Error deserializing plant: ${e.message}")
+                        null
+                    }
+                }
+                trySend(plants)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    suspend fun addPlant(greenhouseId: String, plant: Plant) {
+        database.child("greenhouses/$greenhouseId/plants").child(plant.id).setValue(plant).await()
+    }
+
+    suspend fun editPlant(greenhouseId: String, plant: Plant) {
+        database.child("greenhouses/$greenhouseId/plants").child(plant.id).setValue(plant).await()
+    }
+
+    suspend fun deletePlant(greenhouseId: String, plantId: String) {
+        database.child("greenhouses/$greenhouseId/plants").child(plantId).removeValue().await()
     }
 
     // =====================

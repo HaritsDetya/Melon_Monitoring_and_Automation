@@ -25,15 +25,12 @@ data class Device(
     val greenhouseId: String = ""
 )
 
-data class DeviceStatus(
-    val status: Boolean = false
-)
-
 data class Plant(
     val id: String = "",
     val name: String = "",
     val type: String = "",
-    val planted_at: String = ""
+    val planted_at: String = "",
+    val greenhouseId: String = ""
 )
 
 data class PlantHistory(
@@ -47,7 +44,6 @@ data class SensorReading(
     val humidity: Double = 0.0,
     val ph: Double = 0.0,
     val ec: Double = 0.0,
-    val waterLevel: String? = null,
     val light: Double = 0.0,
     val recorded_at: Long? = null
 )

@@ -33,9 +33,6 @@ fun HistoryScreen(
 
     LaunchedEffect(activeGreenhouseId) {
         if (activeGreenhouseId != null) {
-//            val today = System.currentTimeMillis()
-//            val startOfDay = today - (today % (24 * 60 * 60 * 1000))
-//            val endOfDay = startOfDay + (24 * 60 * 60 * 1000) - 1
             viewModel.loadHistoricalData(activeGreenhouseId!!)
         }
     }
@@ -58,7 +55,7 @@ fun HistoryScreen(
                     is UiState.Error -> {
                         val message = (historicalDataState as UiState.Error).message
                         ErrorDialog(message = message) {
-                            viewModel.clearError() // ✅ reset setelah dialog ditutup
+                            viewModel.clearError()
                         }
                     }
                     is UiState.Success -> {
@@ -70,7 +67,7 @@ fun HistoryScreen(
                             ) {
                                 items(
                                     items = historicalData,
-                                    key = { it.first } // ✅ pakai timestamp sebagai key
+                                    key = { it.first }
                                 ) { (timestamp, data) ->
                                     HistoryItemCard(timestamp, data)
                                 }
@@ -101,7 +98,6 @@ private fun HistoryItemCard(timestamp: Long, data: SensorReading) {
             Text("Waktu: $formattedDate")
             Text("Suhu: ${data.temperature}°C, Kelembapan: ${data.humidity}%")
             Text("pH: ${"%.2f".format(data.ph)}, EC: ${"%.2f".format(data.ec)} mS/cm")
-            Text("Level Air: ${data.waterLevel}")
         }
     }
 }

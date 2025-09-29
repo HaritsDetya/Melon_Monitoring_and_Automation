@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.SharedViewModel
+import com.example.melon_monitoring_and_automation.domain.model.Plant
 import com.example.melon_monitoring_and_automation.domain.model.SensorReading
-import com.example.melon_monitoring_and_automation.ui.components.ErrorDialog
 import com.example.melon_monitoring_and_automation.ui.components.GreenhouseSelector
 import com.example.melon_monitoring_and_automation.ui.components.LoadingIndicator
 import com.example.melon_monitoring_and_automation.ui.components.SensorCard
@@ -43,28 +43,30 @@ fun DashboardScreen(
     val greenhouses by viewModel.greenhouses.collectAsState()
     val activeGreenhouseId by sharedViewModel.activeGreenhouseId.collectAsState()
     val sensorState by viewModel.sensorDataState.collectAsState()
+    val plants by viewModel.plants.collectAsState()
+    val currentUser by authViewModel.currentUser.collectAsState()
 
-    // ✅ PERBAIKAN: Memuat daftar greenhouse saat screen pertama kali muncul
     LaunchedEffect(Unit) {
         viewModel.loadUserGreenhouses()
     }
 
-    // Memuat data sensor saat activeGreenhouseId berubah
     LaunchedEffect(activeGreenhouseId) {
         if (activeGreenhouseId != null) {
             viewModel.loadLatestSensorData(activeGreenhouseId!!)
+            viewModel.loadGreenhousePlants(activeGreenhouseId!!)
         }
     }
 
-    val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID")))
-
+    val currentDate = remember {
+        LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID")))
+    }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            "Selamat Datang, ${authViewModel.currentUser.collectAsState().value?.username ?: "Pengguna"}",
+                            "Selamat Datang, ${currentUser?.username ?: "Pengguna"}",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                             color = MainText
                         )
@@ -96,7 +98,6 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.Top
         ) {
 
-            // Selector Greenhouse
             if (greenhouses.isNotEmpty()) {
                 GreenhouseSelector(
                     greenhouses = greenhouses,
@@ -106,9 +107,32 @@ fun DashboardScreen(
                     },
                     navController = navController
                 )
+            } else {
+                Text(
+                    text = "Anda belum memiliki Greenhouse. Silakan tambah satu.",
+                    modifier = Modifier.padding(top = 16.dp),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Button(onClick = { navController.navigate("add_greenhouse") }) {
+                    Text("Tambah Greenhouse Baru")
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(onClick = { navController.navigate("add_sensor_data") }) {
+                    Text("Tambah Data Sensor")
+                }
+                OutlinedButton(onClick = { navController.navigate("add_plant") }) {
+                    Text("Tambah Tanaman")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (activeGreenhouseId != null) {
                 when (sensorState) {
@@ -119,7 +143,7 @@ fun DashboardScreen(
                     }
                     is UiState.Success -> {
                         val data = (sensorState as UiState.Success<Pair<Long, SensorReading>>).data
-                        HydroponicDashboardContent(data)
+                        HydroponicDashboardContent(data,plants)
                     }
                 }
             } else {
@@ -133,13 +157,24 @@ fun DashboardScreen(
 }
 
 @Composable
-fun HydroponicDashboardContent(data: Pair<Long, SensorReading>) {
+fun HydroponicDashboardContent(data: Pair<Long, SensorReading>, plants: List<Plant>) {
     val (timestamp, sensorReading) = data
+    val (plant) = plants
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Bagian data sensor
+
+        item {
+            Text(
+                text = "Data Sensor",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
         item {
             SensorCard(
                 title = "Suhu & Kelembapan",
@@ -173,6 +208,32 @@ fun HydroponicDashboardContent(data: Pair<Long, SensorReading>) {
                 title = "Diperbarui terakhir",
                 value = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(timestamp)),
                 desc = "Waktu pembaruan"
+            )
+        }
+
+        // Bagian data tanaman
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Data Tanaman",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        item {
+            SensorCard(
+                title = "Nama Tanaman",
+                value = plant.name,
+                desc = "ID Tanaman: ${plant.id}"
+            )
+        }
+
+        item {
+            SensorCard(
+                title = "Tipe",
+                value = plant.type,
+                desc = "Ditanam pada: ${plant.planted_at}"
             )
         }
     }
