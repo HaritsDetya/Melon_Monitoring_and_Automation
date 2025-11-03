@@ -19,21 +19,27 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+
             HydroponicAppTheme {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val sharedViewModel: SharedViewModel = hiltViewModel()
                 val navController = rememberNavController()
 
-
                 val isLoggedIn by authViewModel.authSuccess.collectAsState()
                 val currentUser by authViewModel.currentUser.collectAsState()
 
-                LaunchedEffect(currentUser) {
-                    if (currentUser != null && sharedViewModel.activeGreenhouseId.value == null) {
-                        val firstGreenhouseId = currentUser!!.greenhouses?.keys?.firstOrNull()
-                        if (firstGreenhouseId != null) {
-                            sharedViewModel.setActiveGreenhouse(firstGreenhouseId)
+                LaunchedEffect(Unit) {
+                    intent.data?.let { uri ->
+                        if (uri.toString().contains("access_token")) {
+                            authViewModel.handleResetPasswordDeepLink(uri)
+                            intent.data = null
                         }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    authViewModel.navigateToPasswordReset.collect {
+                        navController.navigate("reset_password_in_app")
                     }
                 }
 

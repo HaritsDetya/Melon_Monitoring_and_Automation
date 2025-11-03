@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.melon_monitoring_and_automation.domain.model.Device
 import com.example.melon_monitoring_and_automation.domain.usecase.GetGreenhouseDevicesUseCase
 import com.example.melon_monitoring_and_automation.domain.usecase.SetDeviceStatusUseCase
+import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,42 +21,46 @@ class ControlViewModel @Inject constructor(
     private val getGreenhouseDevicesUseCase: GetGreenhouseDevicesUseCase
 ) : ViewModel() {
 
-    private val _devicesWithStatus = MutableStateFlow<List<Device>>(emptyList())
-    val devicesWithStatus: StateFlow<List<Device>> = _devicesWithStatus.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _devices = MutableStateFlow<UiState<List<Device>>>(UiState.Loading)
+    val devices: StateFlow<UiState<List<Device>>> = _devices.asStateFlow()
 
     fun loadGreenhouseDevices(greenhouseId: String) {
         viewModelScope.launch {
-            try {
-                getGreenhouseDevicesUseCase(greenhouseId)
-                    .onStart { _isLoading.value = true }
-                    .catch { e ->
-                        _errorMessage.value = "Gagal memuat perangkat: ${e.message}"
-                        _devicesWithStatus.value = emptyList()
-                        _isLoading.value = false
-                    }
-                    .collect { devices ->
-                        _devicesWithStatus.value = devices
-                        _isLoading.value = false
-                    }
-            } catch (e: Exception) {
-                _errorMessage.value = "Gagal memuat perangkat: ${e.message}"
-                _isLoading.value = false
-            }
+            getGreenhouseDevicesUseCase(greenhouseId)
+                .onStart { _devices.value = UiState.Loading }
+                .catch { e ->
+                    _devices.value = UiState.Error(e.message ?: "Gagal memuat perangkat")
+                }
+                .collect { devices ->
+                    _devices.value = UiState.Success(devices)
+                }
         }
     }
 
-    fun setDeviceStatus(greenhouseId: String, deviceId: String, status: Boolean) {
+    fun setDeviceStatus(deviceId: String, status: Boolean) {
         viewModelScope.launch {
             try {
-                setDeviceStatusUseCase(greenhouseId, deviceId, status)
+                // 1. Jalankan UseCase untuk update di Supabase
+                setDeviceStatusUseCase(deviceId, status)
+
+                // 2. PERBAIKAN KRITIS: Update state lokal secara OPTIMIS
+                val currentDevices = (_devices.value as? UiState.Success)?.data ?: return@launch
+
+                val updatedList = currentDevices.map {
+                    // Cari perangkat yang diupdate, dan ubah statusnya
+                    if (it.id == deviceId) {
+                        it.copy(status = status)
+                    } else {
+                        it
+                    }
+                }
+
+                // Setel state baru. Ini memicu Compose untuk mengganti Switch ke status 'OFF'
+                _devices.value = UiState.Success(updatedList)
+
             } catch (e: Exception) {
-                _errorMessage.value = "Gagal mengubah status: ${e.message}"
+                // Jika Supabase gagal, tampilkan error dan mungkin revert state
+                _devices.value = UiState.Error("Gagal mengubah status: ${e.message}")
             }
         }
     }

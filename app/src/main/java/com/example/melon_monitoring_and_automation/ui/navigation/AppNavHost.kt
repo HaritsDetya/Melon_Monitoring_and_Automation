@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -23,9 +24,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
@@ -33,11 +36,14 @@ import com.example.melon_monitoring_and_automation.ui.screen.control.ControlScre
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.DashboardScreen
 import com.example.melon_monitoring_and_automation.ui.screen.history.HistoryScreen
 import com.example.melon_monitoring_and_automation.SharedViewModel
-import com.example.melon_monitoring_and_automation.domain.model.User
+import com.example.melon_monitoring_and_automation.domain.model.UserProfile
 import com.example.melon_monitoring_and_automation.ui.screen.addDevice.AddDeviceScreen
 import com.example.melon_monitoring_and_automation.ui.screen.addGreenhouse.AddGreenhouseScreen
 import com.example.melon_monitoring_and_automation.ui.screen.addPlant.AddPlantScreen
 import com.example.melon_monitoring_and_automation.ui.screen.addSensorData.AddSensorDataScreen
+import com.example.melon_monitoring_and_automation.ui.screen.editDevice.EditDeviceScreen
+import com.example.melon_monitoring_and_automation.ui.screen.editPlant.EditPlantScreen
+import com.example.melon_monitoring_and_automation.ui.screen.editSensorData.EditSensorDataScreen
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Home)
@@ -46,10 +52,14 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Login : Screen("login", "Login")
     object Register : Screen("register", "Register")
 
-    object AddGreenhouse : Screen("add_greenhouse", "Tambah Greenhouse", Icons.Default.Add)
+    object AddGreenhouse : Screen("add_greenhouse_", "Tambah Greenhouse", Icons.Default.Add)
     object AddDevice : Screen("add_device", "Tambah Perangkat", Icons.Default.Add)
     object AddPlant : Screen("add_plant", "Tambah Tanaman", Icons.Default.Add)
     object AddSensorData : Screen("add_sensor_data", "Tambah Data Sensor", Icons.Default.Add)
+
+    object EditSensorData : Screen("edit_sensor", "Edit Data Sensor", Icons.Default.Build)
+    object EditPlant : Screen("edit_plant", "Edit Tanaman", Icons.Default.Build)
+    object EditDevice : Screen("edit_device", "Edit Perangkat", Icons.Default.Build)
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -57,7 +67,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
 fun AppNavHost(
     navController: NavHostController,
     isLoggedIn: Boolean,
-    currentUser: User?
+    currentUser: UserProfile?
 ) {
     val startDestination = if (isLoggedIn) "main_app_graph" else Screen.Login.route
     val sharedViewModel: SharedViewModel = hiltViewModel()
@@ -83,7 +93,6 @@ fun AppNavHost(
                 ) {
                     DashboardScreen(
                         sharedViewModel = sharedViewModel,
-                        authViewModel = hiltViewModel(),
                         navController = navController
                     )
                 }
@@ -116,6 +125,27 @@ fun AppNavHost(
             }
             composable(Screen.AddDevice.route) {
                 AddDeviceScreen(navController = navController)
+            }
+            composable(
+                route = "${Screen.EditSensorData.route}/{readingId}",
+                arguments = listOf(navArgument("readingId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val readingId = backStackEntry.arguments?.getString("readingId") ?: return@composable
+                EditSensorDataScreen(navController = navController, sensorReadingId = readingId)
+            }
+            composable(
+                route = "${Screen.EditPlant.route}/{plantId}",
+                arguments = listOf(navArgument("plantId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val plantId = backStackEntry.arguments?.getString("plantId") ?: return@composable
+                EditPlantScreen(navController = navController, plantId = plantId)
+            }
+            composable(
+                route = "${Screen.EditDevice.route}/{deviceId}",
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val deviceId = backStackEntry.arguments?.getString("deviceId") ?: return@composable
+                EditDeviceScreen(navController = navController, deviceId = deviceId)
             }
         }
     }

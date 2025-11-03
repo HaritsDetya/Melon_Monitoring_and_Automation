@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +9,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     kotlin("kapt")
     id("com.google.devtools.ksp")
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -20,6 +24,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val properties = Properties().apply {
+            if (rootProject.file("local.properties").exists()) {
+                load(FileInputStream(rootProject.file("local.properties")))
+            }
+        }
+
+        // Perbaikan di sini: Tambahkan "\" di sekitar nilai properti
+        buildConfigField("String", "SUPABASE_URL", "\"${properties.getProperty("supabase.url")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${properties.getProperty("supabase.anon_key")}\"")
     }
 
     buildTypes {
@@ -31,20 +45,23 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
 
 dependencies {
-
     // AndroidX & Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -56,7 +73,18 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.compose.constraint.layout)
 
-    // Firebase
+    // Supabase - Menggunakan BOM untuk manajemen versi
+    implementation(platform("io.github.jan-tennert.supabase:bom:2.6.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+//    implementation("io.ktor:ktor-client-android:3.3.0")
+    implementation("io.ktor:ktor-client-okhttp:2.3.9")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // Firebase - Dipertahankan seperti permintaan Anda
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
@@ -68,8 +96,8 @@ dependencies {
     kapt(libs.androidx.hilt.compiler)
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
 
     // Room
     implementation(libs.room.runtime)
@@ -77,7 +105,7 @@ dependencies {
     ksp(libs.room.compiler)
 
     // Font
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.9.0")
+    implementation(libs.androidx.compose.ui.text.google.fonts)
 
     // Pengujian
     testImplementation(libs.junit)

@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.SharedViewModel
 import com.example.melon_monitoring_and_automation.domain.model.SensorReading
 import com.example.melon_monitoring_and_automation.ui.components.ErrorDialog
@@ -32,7 +33,7 @@ fun HistoryScreen(
     val activeGreenhouseId by sharedViewModel.activeGreenhouseId.collectAsState()
 
     LaunchedEffect(activeGreenhouseId) {
-        if (activeGreenhouseId != null) {
+        if (!activeGreenhouseId.isNullOrEmpty()) {
             viewModel.loadHistoricalData(activeGreenhouseId!!)
         }
     }
@@ -49,7 +50,7 @@ fun HistoryScreen(
                 .padding(16.dp),
             contentAlignment = Alignment.TopCenter
         ) {
-            if (activeGreenhouseId != null) {
+            if (!activeGreenhouseId.isNullOrEmpty()) {
                 when (historicalDataState) {
                     is UiState.Loading -> LoadingIndicator()
                     is UiState.Error -> {
@@ -67,14 +68,17 @@ fun HistoryScreen(
                             ) {
                                 items(
                                     items = historicalData,
-                                    key = { it.first }
-                                ) { (timestamp, data) ->
-                                    HistoryItemCard(timestamp, data)
+                                    key = { data -> data.id ?: data.hashCode() }
+                                ) { data ->
+                                    HistoryItemCard(data)
                                 }
                             }
                         } else {
                             Text("Tidak ada riwayat data yang tersedia.")
                         }
+                    }
+                    else -> {
+                        Text("Pilih Greenhouse untuk melihat riwayat data.")
                     }
                 }
             } else {
@@ -85,9 +89,11 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistoryItemCard(timestamp: Long, data: SensorReading) {
-    val formattedDate = remember(timestamp) {
-        SimpleDateFormat("dd/MM HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
+private fun HistoryItemCard(data: SensorReading) {
+    val formattedDate = remember(data.recorded_at) {
+        data.recorded_at?.let {
+            SimpleDateFormat("dd/MM HH:mm:ss", Locale.getDefault()).format(Date(it.toLongOrNull() ?: System.currentTimeMillis()))
+        } ?: "-"
     }
 
     Card(
@@ -96,8 +102,8 @@ private fun HistoryItemCard(timestamp: Long, data: SensorReading) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Waktu: $formattedDate")
-            Text("Suhu: ${data.temperature}°C, Kelembapan: ${data.humidity}%")
-            Text("pH: ${"%.2f".format(data.ph)}, EC: ${"%.2f".format(data.ec)} mS/cm")
+            Text("Suhu: ${data.temperature ?: "-"}°C, Kelembapan: ${data.humidity ?: "-"}%")
+            Text("pH: ${data.ph?.let { "%.2f".format(it) } ?: "-"}, TDS: ${data.tds?.let { "%.2f".format(it) } ?: "-"} ppm")
         }
     }
 }

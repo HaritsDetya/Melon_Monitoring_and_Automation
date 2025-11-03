@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,7 +44,6 @@ import com.example.melon_monitoring_and_automation.ui.components.LoadingIndicato
 import com.example.melon_monitoring_and_automation.ui.theme.MainGreen
 import com.example.melon_monitoring_and_automation.ui.theme.MainText
 import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,16 +55,15 @@ fun AddGreenhouseScreen(
     var name by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
 
     LaunchedEffect(uiState) {
         if (uiState is UiState.Success) {
-            val newGreenhouseId = "gh_${UUID.randomUUID().toString()}"
-            sharedViewModel.setActiveGreenhouse(newGreenhouseId)
             navController.popBackStack()
         }
     }
+
+    val isFormEnabled = uiState !is UiState.Loading
+    val isButtonEnabled = isFormEnabled && name.isNotBlank() && location.isNotBlank()
 
     Scaffold(
         topBar = {
@@ -87,53 +87,57 @@ fun AddGreenhouseScreen(
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isLoading) {
-                LoadingIndicator()
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Data Greenhouse",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(bottom = 32.dp)
+            when (uiState) {
+                is UiState.Loading -> {
+                    LoadingIndicator()
+                }
+                is UiState.Error -> {
+                    val errorMessage = (uiState as UiState.Error).message
+                    ErrorDialog(
+                        message = errorMessage,
+                        onDismiss = { viewModel.resetState() }
                     )
-
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Nama Greenhouse") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = "Nama Greenhouse") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = { Text("Lokasi (e.g., Yogyakarta)") },
-                        leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Lokasi Greenhouse") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Button(
-                        onClick = { viewModel.addGreenhouse(name, location) },
+                }
+                else -> {
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(MainGreen),
-                        enabled = name.isNotBlank() && location.isNotBlank() && !isLoading
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Tambah Greenhouse", color = MainText)
-                    }
-
-                    if (errorMessage != null) {
-                        ErrorDialog(
-                            message = errorMessage ?: "Terjadi kesalahan",
-                            onDismiss = { viewModel.clearError() }
+                        Text(
+                            text = "Data Greenhouse",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(bottom = 32.dp)
                         )
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Nama Greenhouse") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = "Nama Greenhouse") },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = location,
+                            onValueChange = { location = it },
+                            label = { Text("Lokasi (e.g., Yogyakarta)") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Lokasi Greenhouse") },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = { viewModel.addGreenhouse(name, location, sharedViewModel) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(MainGreen),
+                            enabled = isButtonEnabled
+                        ) {
+                            Text("Tambah Greenhouse", color = MainText)
+                        }
                     }
                 }
             }

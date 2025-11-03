@@ -9,8 +9,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,8 +18,8 @@ class HistoryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _historicalDataState =
-        MutableStateFlow<UiState<List<Pair<Long, SensorReading>>>>(UiState.Loading)
-    val historicalDataState: StateFlow<UiState<List<Pair<Long, SensorReading>>>> =
+        MutableStateFlow<UiState<List<SensorReading>>>(UiState.Loading)
+    val historicalDataState: StateFlow<UiState<List<SensorReading>>> =
         _historicalDataState.asStateFlow()
 
     fun loadHistoricalData(
@@ -30,21 +28,22 @@ class HistoryViewModel @Inject constructor(
         endTimestamp: Long? = null
     ) {
         viewModelScope.launch {
-            getHistoricalDataUseCase(greenhouseId)
-                .onStart { _historicalDataState.value = UiState.Loading }
-                .catch { e ->
-                    _historicalDataState.value = UiState.Error(e.message ?: "Terjadi kesalahan")
-                }
-                .collect { allData ->
-                    val filteredData = if (startTimestamp != null && endTimestamp != null) {
-                        allData.filter { (timestamp, _) ->
-                            timestamp >= startTimestamp && timestamp <= endTimestamp
-                        }
-                    } else {
-                        allData
+            _historicalDataState.value = UiState.Loading
+            try {
+                val allData = getHistoricalDataUseCase(greenhouseId)
+
+                val filteredData = if (startTimestamp != null && endTimestamp != null) {
+                    allData.filter { data ->
+                        val timestamp = data.recorded_at?.toLongOrNull() ?: 0L
+                        timestamp >= startTimestamp && timestamp <= endTimestamp
                     }
-                    _historicalDataState.value = UiState.Success(filteredData)
+                } else {
+                    allData
                 }
+                _historicalDataState.value = UiState.Success(filteredData)
+            } catch (e: Exception) {
+                _historicalDataState.value = UiState.Error(e.message ?: "Terjadi kesalahan")
+            }
         }
     }
 
@@ -52,4 +51,3 @@ class HistoryViewModel @Inject constructor(
         _historicalDataState.value = UiState.Loading
     }
 }
-

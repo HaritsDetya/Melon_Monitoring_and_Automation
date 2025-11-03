@@ -1,28 +1,13 @@
 package com.example.melon_monitoring_and_automation.ui.screen.addSensorData
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +18,7 @@ import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.SharedViewModel
 import com.example.melon_monitoring_and_automation.ui.components.ErrorDialog
 import com.example.melon_monitoring_and_automation.ui.components.LoadingIndicator
+import com.example.melon_monitoring_and_automation.ui.screen.dashboard.DashboardViewModel
 import com.example.melon_monitoring_and_automation.ui.theme.MainGreen
 import com.example.melon_monitoring_and_automation.ui.theme.MainText
 import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
@@ -42,18 +28,19 @@ import com.example.melon_monitoring_and_automation.ui.wrapper.UiState
 fun AddSensorDataScreen(
     navController: NavController,
     viewModel: AddSensorDataViewModel = hiltViewModel(),
-    sharedViewModel: SharedViewModel = hiltViewModel()
+    dashboardViewModel: DashboardViewModel = hiltViewModel()
 ) {
     var temp by remember { mutableStateOf("") }
     var hum by remember { mutableStateOf("") }
     var ph by remember { mutableStateOf("") }
-    var ec by remember { mutableStateOf("") }
-    var light by remember { mutableStateOf("") }
+    var tds by remember { mutableStateOf("") }
 
     val uiState by viewModel.uiState.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val activeGreenhouseId by sharedViewModel.activeGreenhouseId.collectAsState()
+    val activeGreenhouseId by dashboardViewModel.activeGreenhouseId.collectAsState()
+
+    val isFormEnabled = uiState !is UiState.Loading
+    val isFormValid = temp.isNotBlank() && hum.isNotBlank() && ph.isNotBlank() && tds.isNotBlank()
+    val isButtonEnabled = isFormEnabled && isFormValid && !activeGreenhouseId.isNullOrEmpty()
 
     LaunchedEffect(uiState) {
         if (uiState is UiState.Success) {
@@ -80,74 +67,80 @@ fun AddSensorDataScreen(
                 .padding(16.dp),
             contentAlignment = Alignment.TopCenter
         ) {
-            if (isLoading) {
-                LoadingIndicator()
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = temp,
-                        onValueChange = { temp = it },
-                        label = { Text("Suhu (°C)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = hum,
-                        onValueChange = { hum = it },
-                        label = { Text("Kelembaban (%)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = ph,
-                        onValueChange = { ph = it },
-                        label = { Text("pH Air") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = ec,
-                        onValueChange = { ec = it },
-                        label = { Text("EC (mS/cm)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = light,
-                        onValueChange = { light = it },
-                        label = { Text("Intensitas Lampu (lux)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            activeGreenhouseId?.let {
-                                viewModel.addSensorReading(
-                                    it,
-                                    temp.toDoubleOrNull() ?: 0.0,
-                                    hum.toDoubleOrNull() ?: 0.0,
-                                    ph.toDoubleOrNull() ?: 0.0,
-                                    ec.toDoubleOrNull() ?: 0.0,
-                                    light.toDoubleOrNull() ?: 0.0
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(MainGreen),
-                        enabled = temp.isNotBlank() && hum.isNotBlank() && ph.isNotBlank() && ec.isNotBlank() && light.isNotBlank()
-                    ) {
-                        Text("Tambah Data Sensor", color = MainText)
+            when (uiState) {
+                is UiState.Loading -> {
+                    LoadingIndicator()
+                }
+                is UiState.Error -> {
+                    val errorMessage = (uiState as UiState.Error).message
+                    ErrorDialog(message = errorMessage) {
+                        viewModel.resetState()
                     }
-                    if (errorMessage != null) {
-                        ErrorDialog(message = errorMessage!!, onDismiss = { viewModel.clearError() })
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = temp,
+                            onValueChange = { temp = it },
+                            label = { Text("Suhu (°C)") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        OutlinedTextField(
+                            value = hum,
+                            onValueChange = { hum = it },
+                            label = { Text("Kelembaban (%)") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        OutlinedTextField(
+                            value = ph,
+                            onValueChange = { ph = it },
+                            label = { Text("pH Air") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        OutlinedTextField(
+                            value = tds,
+                            onValueChange = { tds = it },
+                            label = { Text("TDS (ppm)") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isFormEnabled
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = {
+                                activeGreenhouseId?.let {
+                                    viewModel.addSensorReading(
+                                        greenhouseId = it,
+                                        temperature = temp.toFloatOrNull(),
+                                        humidity = hum.toFloatOrNull(),
+                                        ph = ph.toFloatOrNull(),
+                                        tds = tds.toFloatOrNull()
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(MainGreen),
+                            enabled = isButtonEnabled
+                        ) {
+                            Text("Tambah Data Sensor", color = MainText)
+                        }
                     }
                 }
             }

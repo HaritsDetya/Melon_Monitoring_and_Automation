@@ -12,11 +12,29 @@ compose-constraint-layout = "1.0.1"
 googleServices = "4.4.1"
 hiltAndroid = "2.52"
 hiltAndroidx = "1.2.0"
-firebaseDatabase = "22.0.0"
 room = "2.6.0"
+coroutines = "1.7.3"
+
+# Supabase
+supabase-bom = "3.0.1"
+supabase-kt = "3.0.1"
+postgrest-kt = "3.0.1"
+gotrue-kt = "3.0.1"
+realtime-kt = "3.0.1"
+storage-kt = "3.0.1"
+ktUuid = "1.0.1"
+ktorClientWebsockets = "2.3.9"
+ktorClientOkhttp = "2.3.9"
+ktorClientAndroid = "3.3.0"
+kotlinxSerializationJson = "1.7.1"
+kotlinx-datetime = "0.6.0"
+
+# Firebase
 firebase-bom = "32.3.1"
+firebaseDatabase = "22.0.0"
 
 [libraries]
+# AndroidX & Compose
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -32,11 +50,16 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-constraint-layout = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "compose-constraint-layout" }
+androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts" }
 
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx" }
+
+# Coroutines
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hiltAndroid" }
@@ -48,7 +71,6 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
-
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
