@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
+import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,17 +49,19 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
 
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val authSuccess by viewModel.authSuccess.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
 
-    LaunchedEffect(authSuccess) {
-        if (authSuccess) {
-            navController.navigate("main_app_graph") {
-                popUpTo(Screen.Login.route) { inclusive = true }
-            }
-        }
+    LaunchedEffect(authSuccess, currentUser, isLoading) {
+        println("🔹 [REGISTER SCREEN] State Update:")
+        println("🔹   - isLoading: $isLoading")
+        println("🔹   - authSuccess: $authSuccess")
+        println("🔹   - currentUser: $currentUser")
+        println("🔹   - errorMessage: $errorMessage")
     }
 
     Box(
@@ -101,48 +105,109 @@ fun RegisterScreen(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
+            // Username Field
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Username", color = Color.Gray) },
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Username Icon", tint = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Username Icon",
+                        tint = Color.Gray
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                ),
                 shape = RoundedCornerShape(12.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Email Field
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email", color = Color.Gray) },
                 singleLine = true,
-                leadingIcon = {Icon(Icons.Default.Email, contentDescription = "Email Icon", tint = Color.Gray)},
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Email,
+                        contentDescription = "Email Icon",
+                        tint = Color.Gray
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
                 shape = RoundedCornerShape(12.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Phone Number Field
+            OutlinedTextField(
+                value = phoneNumber,
+                onValueChange = {
+                    // Filter hanya angka dan tanda plus
+                    phoneNumber = it.filter { char ->
+                        char.isDigit() || char == '+'
+                    }
+                },
+                label = { Text("Nomor Telepon", color = Color.Gray) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Phone,
+                        contentDescription = "Phone Icon",
+                        tint = Color.Gray
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Phone,
+                    imeAction = ImeAction.Next
+                ),
+                placeholder = {
+                    Text("Contoh: +628123456789", color = Color.Gray.copy(alpha = 0.6f))
+                },
+                shape = RoundedCornerShape(12.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Password Field
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password", color = Color.Gray) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon", tint = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = "Password Icon",
+                        tint = Color.Gray
+                    )
+                },
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        viewModel.register(username, email, password)
+                        viewModel.register(username, email, password, phoneNumber)
                     }
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Error Message
             if (!errorMessage.isNullOrEmpty()) {
                 Text(
                     text = errorMessage ?: "Terjadi kesalahan yang tidak diketahui.",
@@ -152,12 +217,21 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Register Button
             Button(
-                onClick = { viewModel.register(username, email, password) },
+                onClick = {
+                    println("🔹 Register attempt:")
+                    println("🔹 Username: $username")
+                    println("🔹 Email: $email")
+                    println("🔹 Phone: $phoneNumber")
+                    println("🔹 Password length: ${password.length}")
+
+                    viewModel.register(username, email, password, phoneNumber)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                enabled = !isLoading
+                enabled = !isLoading && isFormValid(username, email, password, phoneNumber)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -168,8 +242,22 @@ fun RegisterScreen(
                     Text("Daftar", color = Color.White, fontSize = 16.sp)
                 }
             }
+
+            // Show success message
+            if (authSuccess && currentUser != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "✅ Registrasi berhasil! Mengarahkan ke dashboard...",
+                    color = Color(0xFF388E3C),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Back to Login
             TextButton(
                 onClick = { navController.popBackStack() }
             ) {
@@ -181,4 +269,28 @@ fun RegisterScreen(
             }
         }
     }
+}
+
+// Helper function untuk validasi form
+private fun isFormValid(
+    username: String,
+    email: String,
+    password: String,
+    phoneNumber: String
+): Boolean {
+    return username.isNotBlank() &&
+            email.isNotBlank() &&
+            password.length >= 6 && // Minimum 6 karakter untuk password
+            phoneNumber.isNotBlank()
+}
+
+// Extension function untuk validasi email sederhana
+private fun String.isValidEmail(): Boolean {
+    return this.contains("@") && this.contains(".")
+}
+
+// Extension function untuk validasi nomor telepon sederhana
+private fun String.isValidPhoneNumber(): Boolean {
+    // Minimal 10 digit, maksimal 15 digit (termasuk kode negara)
+    return this.length in 10..15 && this.all { it.isDigit() || it == '+' }
 }

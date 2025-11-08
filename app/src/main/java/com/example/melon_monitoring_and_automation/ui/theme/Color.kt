@@ -15,3 +15,11 @@ val MainBlue = Color(0xFF42A5F5)
 val MainBackground = Color(0xFFF0F4F8)
 val CardBackground = Color(0xFF424242)
 val MainText = Color(0xFF212121)
+
+// Fix
+val Main = Color(0xFF0C455C)
+val Secondary = Color(0xFF4FC0D0)
+val Thrid = Color(0xFF06A9C0)
+val Four = Color(0xFF95FF75)
+val TextUtama = Color(0xFFF0F4F8)
+val Five = Color(0xFF05B161)
