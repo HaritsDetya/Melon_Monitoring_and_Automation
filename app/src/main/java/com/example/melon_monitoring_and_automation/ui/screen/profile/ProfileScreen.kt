@@ -58,8 +58,15 @@ fun ProfileScreen(
     val greenhouses by greenhouseViewModel.greenhouses.collectAsStateWithLifecycle()
     val authSuccess by viewModel.authSuccess.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
 
     var manualLogoutTriggered by remember { mutableStateOf(false) }
+    var manualDeleteTriggered by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showDeleteSuccess by remember { mutableStateOf(false) }
+
+    var showDeleteError by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf("") }
 
     // 🔹 FIX: Load user data dan greenhouse data saat screen dibuka
     LaunchedEffect(Unit) {
@@ -72,20 +79,64 @@ fun ProfileScreen(
         greenhouseViewModel.loadUserGreenhouses()
     }
 
-    // 🔹 FIX: Navigation trigger ketika logout berhasil
-    LaunchedEffect(authSuccess, currentUser, manualLogoutTriggered) {
+    LaunchedEffect(authSuccess, currentUser, isLoading, manualDeleteTriggered) {
         println("🔹 [PROFILE] Navigation Check:")
         println("🔹   - authSuccess: $authSuccess")
         println("🔹   - currentUser: ${currentUser?.email ?: "null"}")
         println("🔹   - isLoading: $isLoading")
+        println("🔹   - manualDeleteTriggered: $manualDeleteTriggered")
 
-        if (manualLogoutTriggered && currentUser == null && !isLoading) {
+        // Handle delete account navigation - PERBAIKAN DI SINI
+        if (manualDeleteTriggered && !authSuccess && currentUser == null && !isLoading) {
+            println("🔹 [PROFILE] 🚀 Account deletion confirmed, navigating to login")
+            showDeleteSuccess = true
+
+            // Tunggu sebentar untuk show success message
+            delay(1500)
+
+            // Navigate dengan clear stack
+            navController.navigate(Screen.Login.route) {
+                popUpTo("main_app_graph") { inclusive = true }
+            }
+            manualDeleteTriggered = false
+            showDeleteSuccess = false
+        }
+
+        // Handle logout navigation
+        if (manualLogoutTriggered && !authSuccess && currentUser == null && !isLoading) {
             println("🔹 [PROFILE] 🚀 Manual logout confirmed, navigating to login")
             delay(1000)
             navController.navigate(Screen.Login.route) {
                 popUpTo("main_app_graph") { inclusive = true }
             }
             manualLogoutTriggered = false
+        }
+    }
+
+    // Tambahkan juga reset state ketika screen keluar
+    DisposableEffect(Unit) {
+        onDispose {
+            // Reset states ketika screen tidak aktif
+            manualLogoutTriggered = false
+            manualDeleteTriggered = false
+        }
+    }
+
+    // Handle delete account errors
+    LaunchedEffect(errorMessage) {
+        if (!errorMessage.isNullOrEmpty() && manualDeleteTriggered) {
+            showDeleteError = true
+            deleteError = errorMessage!!
+        }
+    }
+
+    LaunchedEffect(manualDeleteTriggered) {
+        if (manualDeleteTriggered) {
+            println("🔹 [PROFILE] Delete account triggered, waiting for completion...")
+            println("🔹 [PROFILE] Current states:")
+            println("🔹   - currentUser: ${currentUser?.email ?: "null"}")
+            println("🔹   - isLoading: $isLoading")
+            println("🔹   - authSuccess: $authSuccess")
         }
     }
 
@@ -100,6 +151,74 @@ fun ProfileScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Error Message for Delete Account
+            if (showDeleteError) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Gagal Menghapus Akun",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = deleteError,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                showDeleteError = false
+                                deleteError = ""
+                                viewModel.clearErrorMessage()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Tutup")
+                        }
+                    }
+                }
+            }
+
+            // Error Message
+            if (!errorMessage.isNullOrEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
+                ) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            // Success Message for Account Deletion
+            if (showDeleteSuccess) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                ) {
+                    Text(
+                        text = "✅ Akun berhasil dihapus. Mengarahkan ke halaman login...",
+                        color = Color(0xFF388E3C),
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
             // Loading State
             if (isLoading) {
                 Box(
@@ -134,10 +253,72 @@ fun ProfileScreen(
                 },
                 onDeleteAccount = {
                     println("🔹 [PROFILE] Delete account clicked")
-                    // Handle delete account
+                    showDeleteConfirmation = true
                 }
             )
         }
+    }
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = {
+                Text(
+                    "Hapus Akun",
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Column {
+                    Text("Apakah Anda yakin ingin menghapus akun?")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Tindakan ini akan:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "• Menghapus semua data akun Anda",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "• Menghapus semua greenhouse dan data sensor",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "• Tindakan ini tidak dapat dibatalkan",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        manualDeleteTriggered = true
+                        viewModel.deleteAccount(
+                            onSuccess = {
+                                println("🔹 [PROFILE] Account deletion successful")
+                            },
+                            onError = { error ->
+                                println("🔹 [PROFILE] Account deletion failed: $error")
+                            }
+                        )
+                    }
+                ) {
+                    Text(
+                        "Hapus Akun",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -327,7 +508,6 @@ fun ProfileActionsSection(
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit
 ) {
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -358,7 +538,7 @@ fun ProfileActionsSection(
 
             // Delete Account Button
             TextButton(
-                onClick = { showDeleteConfirmation = true },
+                onClick = onDeleteAccount, // 🔹 LANGSUNG panggil onDeleteAccount
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -367,30 +547,5 @@ fun ProfileActionsSection(
                 )
             }
         }
-    }
-
-    if (showDeleteConfirmation) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Hapus Akun") },
-            text = {
-                Text("Apakah Anda yakin ingin menghapus akun? Tindakan ini tidak dapat dibatalkan.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteAccount()
-                        showDeleteConfirmation = false
-                    }
-                ) {
-                    Text("Hapus", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Batal")
-                }
-            }
-        )
     }
 }

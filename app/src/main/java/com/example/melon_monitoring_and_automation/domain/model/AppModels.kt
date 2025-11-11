@@ -1,8 +1,13 @@
 package com.example.melon_monitoring_and_automation.domain.model
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.util.Calendar
+import java.util.Locale
 
 @Serializable
 data class User(
@@ -84,24 +89,75 @@ data class AutomationSettings(
     val updatedAt: String
 )
 
-// Data model untuk chart data
-@Serializable
-data class ChartData(
-    val timestamp: String,
-    val value: Double,
-    val sensorType: SensorType
-)
-
-// Data model untuk chart configuration
+// Tambahkan di file domain model Anda
 data class ChartConfig(
     val selectedDate: Long = System.currentTimeMillis(),
     val selectedSensorType: SensorType = SensorType.TEMPERATURE,
     val timeRange: TimeRange = TimeRange.HOURS_24,
-    val chartType: ChartType = ChartType.LINE
+    val chartType: ChartType = ChartType.LINE,
+    // ✅ PERBAIKAN: Tambah custom date range
+    val customDateRange: DateRange? = null
 )
 
+// ✅ Model untuk custom date range
+data class DateRange(
+    val startDate: Long, // Timestamp in milliseconds
+    val endDate: Long,   // Timestamp in milliseconds
+    val label: String    // Display label e.g., "1-7 Dec 2024"
+) {
+    companion object {
+        @RequiresApi(Build.VERSION_CODES.O)
+        fun createWeeklyRange(startDate: Long, endDate: Long): DateRange {
+            val dateFormat = SimpleDateFormat("d MMM", Locale.getDefault())
+            val startStr = dateFormat.format(startDate)
+            val endStr = dateFormat.format(endDate)
+
+            // Tambahkan tahun jika berbeda
+            val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
+            val startYear = yearFormat.format(startDate)
+            val endYear = yearFormat.format(endDate)
+
+            val yearSuffix = if (startYear != endYear) " $startYear" else ""
+
+            return DateRange(
+                startDate = startDate,
+                endDate = endDate,
+                label = "$startStr - $endStr$yearSuffix"
+            )
+        }
+
+        // ✅ PERBAIKAN: Method untuk membuat range dari minggu tertentu dalam bulan
+        @RequiresApi(Build.VERSION_CODES.O)
+        fun createFromWeekInMonth(monthYear: MonthYear, weekIndex: Int): DateRange {
+            val calendar = Calendar.getInstance()
+            calendar.set(monthYear.year, monthYear.monthValue - 1, 1)
+
+            // Cari hari pertama minggu tersebut
+            val firstDayOfWeek = (weekIndex * 7) + 1
+            calendar.set(Calendar.DAY_OF_MONTH, firstDayOfWeek.coerceAtLeast(1))
+
+            val startDate = calendar.timeInMillis
+
+            // Akhir minggu (6 hari setelah start)
+            calendar.add(Calendar.DAY_OF_MONTH, 6)
+            val lastDayOfMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+            calendar.set(Calendar.DAY_OF_MONTH, minOf(calendar.get(Calendar.DAY_OF_MONTH), lastDayOfMonth))
+
+            val endDate = calendar.timeInMillis
+
+            return createWeeklyRange(startDate, endDate)
+        }
+    }
+
+    // ✅ PERBAIKAN: Helper method untuk mendapatkan durasi dalam hari
+    fun getDurationInDays(): Long {
+        return (endDate - startDate) / (24 * 60 * 60 * 1000) + 1 // +1 untuk inclusive
+    }
+}
+
+// ✅ Extended TimeRange untuk include custom
 enum class TimeRange {
-    HOURS_24, DAYS_7, DAYS_30
+    HOURS_24, DAYS_7, DAYS_30, CUSTOM
 }
 
 enum class ChartType {
@@ -115,3 +171,18 @@ data class ChartDataPoint(
     val label: String, // Time label
     val rawValue: Double // Original value
 )
+
+// ✅ Model untuk month-year selection
+data class MonthYear(
+    val monthValue: Int, // 1-12
+    val year: Int
+) {
+    val displayName: String
+        get() {
+            val monthNames = arrayOf(
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+            )
+            return "${monthNames[monthValue - 1]} $year"
+        }
+}

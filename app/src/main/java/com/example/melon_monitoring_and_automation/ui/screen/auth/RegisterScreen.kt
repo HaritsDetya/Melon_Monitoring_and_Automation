@@ -39,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,12 +57,28 @@ fun RegisterScreen(
     val authSuccess by viewModel.authSuccess.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
-    LaunchedEffect(authSuccess, currentUser, isLoading) {
-        println("🔹 [REGISTER SCREEN] State Update:")
-        println("🔹   - isLoading: $isLoading")
+    // 🔹 FIX: Enhanced navigation with delay for better UX
+    LaunchedEffect(authSuccess, currentUser) {
+        println("🔹 [REGISTER SCREEN] Navigation Check:")
         println("🔹   - authSuccess: $authSuccess")
         println("🔹   - currentUser: $currentUser")
-        println("🔹   - errorMessage: $errorMessage")
+        println("🔹   - isLoading: $isLoading")
+
+        if (authSuccess && currentUser != null && !isLoading) {
+            println("🔹 [REGISTER SCREEN] ✅ Registration successful, waiting a moment...")
+
+            // Small delay to show success message
+            delay(1500)
+
+            println("🔹 [REGISTER SCREEN] 🚀 Navigating to Dashboard...")
+
+            // Clear the back stack and navigate to main app
+            navController.navigate("main_app_graph") {
+                popUpTo(Screen.Register.route) {
+                    inclusive = true
+                }
+            }
+        }
     }
 
     Box(

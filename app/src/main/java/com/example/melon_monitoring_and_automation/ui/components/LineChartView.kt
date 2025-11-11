@@ -161,16 +161,21 @@ private fun ChartCanvas(
     yAxisLabel: String,
     onCanvasError: () -> Unit
 ) {
-    // Hitung nilai untuk chart dengan error handling
+    // Hitung nilai untuk chart dengan error handling yang lebih robust
     val chartValues = remember(dataPoints) {
         try {
-            val maxY = dataPoints.maxOfOrNull { it.y } ?: 100f
-            val minY = dataPoints.minOfOrNull { it.y } ?: 0f
-            val yRange = (maxY - minY).coerceAtLeast(1f)
-            Triple(maxY, minY, yRange)
+            if (dataPoints.isEmpty()) {
+                Triple(100f, 0f, 100f) // Default values untuk empty data
+            } else {
+                val maxY = dataPoints.maxOf { it.y }
+                val minY = dataPoints.minOf { it.y }
+                val yRange = (maxY - minY).coerceAtLeast(1f) // Pastikan range minimal 1
+                Triple(maxY, minY, yRange)
+            }
         } catch (e: Exception) {
+            println("🔹 [CHART] Error calculating chart values: ${e.message}")
             onCanvasError()
-            Triple(100f, 0f, 100f)
+            Triple(100f, 0f, 100f) // Fallback values
         }
     }
 
@@ -180,7 +185,7 @@ private fun ChartCanvas(
         try {
             val canvasWidth = size.width
             val canvasHeight = size.height
-            val padding = 40.dp.toPx()
+            val padding = 50.dp.toPx() // ✅ PERBAIKAN: Tambah padding untuk label
 
             // Draw Y-axis
             drawLine(
@@ -198,7 +203,7 @@ private fun ChartCanvas(
                 strokeWidth = 2f
             )
 
-            // Draw Y-axis labels
+            // Draw Y-axis labels dengan nilai aktual
             val yStep = (canvasHeight - 2 * padding) / 4
             for (i in 0..4) {
                 val yValue = minY + (yRange * (4 - i) / 4)
@@ -227,19 +232,24 @@ private fun ChartCanvas(
                 }
             )
 
-            // Draw chart line and points
+            // Draw chart line and points - hanya jika ada data
             if (dataPoints.isNotEmpty()) {
                 val xStep = if (dataPoints.size > 1) {
                     (canvasWidth - 2 * padding) / (dataPoints.size - 1)
                 } else {
-                    0f
+                    canvasWidth - 2 * padding // Jika hanya 1 data point
                 }
 
                 // Draw line
                 val path = androidx.compose.ui.graphics.Path().apply {
                     dataPoints.forEachIndexed { index, dataPoint ->
                         val x = padding + (index * xStep)
-                        val y = canvasHeight - padding - ((dataPoint.y - minY) / yRange) * (canvasHeight - 2 * padding)
+                        // ✅ PERBAIKAN: Hitung Y position dengan benar
+                        val y = if (yRange > 0) {
+                            canvasHeight - padding - ((dataPoint.y - minY) / yRange) * (canvasHeight - 2 * padding)
+                        } else {
+                            canvasHeight / 2f // Jika semua nilai sama
+                        }
 
                         if (index == 0) {
                             moveTo(x, y)
@@ -258,7 +268,11 @@ private fun ChartCanvas(
                 // Draw data points
                 dataPoints.forEachIndexed { index, dataPoint ->
                     val x = padding + (index * xStep)
-                    val y = canvasHeight - padding - ((dataPoint.y - minY) / yRange) * (canvasHeight - 2 * padding)
+                    val y = if (yRange > 0) {
+                        canvasHeight - padding - ((dataPoint.y - minY) / yRange) * (canvasHeight - 2 * padding)
+                    } else {
+                        canvasHeight / 2f
+                    }
 
                     drawCircle(
                         color = Color(0xFF388E3C),
@@ -266,9 +280,21 @@ private fun ChartCanvas(
                         center = Offset(x, y)
                     )
                 }
+            } else {
+                // Draw message for empty data
+                drawContext.canvas.nativeCanvas.drawText(
+                    "No data available",
+                    canvasWidth / 2,
+                    canvasHeight / 2,
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.GRAY
+                        textSize = 16.dp.toPx()
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                )
             }
         } catch (e: Exception) {
-            // Jika ada error saat drawing, trigger error callback
+            println("🔹 [CHART] Canvas drawing error: ${e.message}")
             onCanvasError()
         }
     }
@@ -279,11 +305,17 @@ private fun SimpleXAxisLabels(dataPoints: List<ChartDataPoint>) {
     if (dataPoints.isEmpty()) return
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 50.dp), // ✅ PERBAIKAN: Match chart padding
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Show first, middle, and last labels only
-        val indices = listOf(0, dataPoints.size / 2, dataPoints.size - 1)
+        // Show first, middle, and last labels
+        val indices = when {
+            dataPoints.size <= 3 -> dataPoints.indices.toList()
+            else -> listOf(0, dataPoints.size / 2, dataPoints.size - 1)
+        }
+
         indices.forEach { index ->
             if (index < dataPoints.size) {
                 Text(

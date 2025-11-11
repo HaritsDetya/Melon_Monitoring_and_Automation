@@ -1,22 +1,17 @@
 package com.example.melon_monitoring_and_automation.ui.viewmodel
 
 import android.content.Context
-import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
 import com.example.melon_monitoring_and_automation.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.net.URLDecoder
 import javax.inject.Inject
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +19,11 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import androidx.core.content.edit
+import com.example.melon_monitoring_and_automation.data.network.NetworkResult
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -95,12 +95,7 @@ class AuthViewModel @Inject constructor(
         println("🔹 [AUTH] Auto-check enabled")
     }
 
-    fun disableAutoCheck() {
-        _autoCheckEnabled.value = false
-        println("🔹 [AUTH] Auto-check disabled")
-    }
-
-    // ✅ Register user baru - FIXED
+    // ✅ Register user baru - ENHANCED VERSION
     fun register(username: String, email: String, password: String, phoneNumber: String) {
         _isLoading.value = true
         _errorMessage.value = null
@@ -108,24 +103,37 @@ class AuthViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                println("🔹 [AUTH] Starting registration for: $email")
+
                 val result = repository.signUpWithEmail(username, email, password, phoneNumber)
+
                 if (result.isSuccess) {
                     val user = result.getOrNull()
+                    println("🔹 [AUTH] ✅ Registration successful: ${user?.email}")
+
                     _currentUser.value = user
                     _authSuccess.value = true
                     _errorMessage.value = null
 
                     // Clear form data after successful registration
-                    // This will trigger navigation in MainApp
+                    // This will trigger navigation in RegisterScreen
+
                 } else {
-                    _errorMessage.value = result.exceptionOrNull()?.message ?: "Registrasi gagal"
+                    val error = result.exceptionOrNull()?.message ?: "Registrasi gagal"
+                    println("🔹 [AUTH] ❌ Registration failed: $error")
+
+                    _errorMessage.value = error
                     _authSuccess.value = false
+                    _currentUser.value = null
                 }
             } catch (e: Exception) {
+                println("🔹 [AUTH] ❌ Registration exception: ${e.message}")
                 _errorMessage.value = "Registrasi gagal: ${e.message}"
                 _authSuccess.value = false
+                _currentUser.value = null
             } finally {
                 _isLoading.value = false
+                println("🔹 [AUTH] Registration process completed")
             }
         }
     }
@@ -296,18 +304,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Di AuthViewModel.kt - tambahkan function untuk cek koneksi internet
-    private suspend fun hasInternetConnection(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Method 1: Ping test
-                Runtime.getRuntime().exec("ping -c 1 8.8.8.8").waitFor() == 0
-            } catch (e: Exception) {
-                false
-            }
-        }
-    }
-
     private suspend fun updatePasswordViaHttpURLConnection(newPassword: String, accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -408,42 +404,6 @@ class AuthViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("🔹 [AUTH] ❌ OkHttp Exception: ${e.message}")
                 e.printStackTrace()
-                false
-            }
-        }
-    }
-
-    private suspend fun testNetworkConnection(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Test multiple endpoints
-                val testUrls = listOf(
-                    "https://www.google.com",
-                    "https://8.8.8.8", // Google DNS
-                    "https://api.supabase.co"
-                )
-
-                val results = testUrls.map { url ->
-                    try {
-                        val connection = URL(url).openConnection() as HttpURLConnection
-                        connection.connectTimeout = 5000
-                        connection.readTimeout = 5000
-                        connection.requestMethod = "HEAD"
-                        val result = connection.responseCode == 200
-                        println("🔹 [NETWORK TEST] $url: ${if (result) "✅" else "❌"}")
-                        result
-                    } catch (e: Exception) {
-                        println("🔹 [NETWORK TEST] $url: ❌ ${e.message}")
-                        false
-                    }
-                }
-
-                val hasConnection = results.any { it }
-                println("🔹 [NETWORK TEST] Overall: ${if (hasConnection) "✅ CONNECTED" else "❌ NO INTERNET"}")
-                hasConnection
-
-            } catch (e: Exception) {
-                println("🔹 [NETWORK TEST] Exception: ${e.message}")
                 false
             }
         }
@@ -592,24 +552,51 @@ class AuthViewModel @Inject constructor(
     fun clearAllStates() {
         _isLoading.value = false
         _errorMessage.value = null
-        // Jangan reset authSuccess dan currentUser di sini
-        // _authSuccess.value = false
-        // _currentUser.value = null
         _passwordResetSent.value = false
         println("🔹 [AUTH] States cleared (except auth success and user)")
     }
 
-    // Method khusus untuk reset saat logout
-    private fun resetAllStatesForLogout() {
-        _isLoading.value = false
-        _errorMessage.value = null
-        _authSuccess.value = false
-        _currentUser.value = null
-        _passwordResetSent.value = false
-        println("🔹 [AUTH] All states reset for logout")
-    }
-
     fun setErrorMessage(message: String) {
         _errorMessage.value = message
+    }
+
+    // Di AuthViewModel.kt
+    fun deleteAccount(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        _isLoading.value = true
+        _errorMessage.value = null
+
+        viewModelScope.launch {
+            try {
+                println("🔹 [AUTH] Starting secure account deletion via Edge Function...")
+
+                // 🎯 PANGGIL REPOSITORY YANG SUDAH DIUPDATE
+                val result = repository.deleteUserAccount()
+
+                if (result is NetworkResult.Success && result.data == true) {
+                    // Clear semua local states
+                    _currentUser.value = null
+                    _authSuccess.value = false
+                    _errorMessage.value = null
+                    _passwordResetSent.value = false
+
+                    _isLoading.value = false
+                    println("🔹 [AUTH] ✅ Account deletion completed successfully")
+                    onSuccess()
+                } else {
+                    _isLoading.value = false
+                    val errorMsg = (result as? NetworkResult.Error)?.message ?: "Failed to delete account"
+                    println("🔹 [AUTH] ❌ Deletion failed: $errorMsg")
+                    _errorMessage.value = errorMsg
+                    onError(errorMsg)
+                }
+
+            } catch (e: Exception) {
+                _isLoading.value = false
+                println("🔹 [AUTH] ❌ Deletion exception: ${e.message}")
+                val errorMsg = "Error: ${e.message ?: "Unknown error"}"
+                _errorMessage.value = errorMsg
+                onError(errorMsg)
+            }
+        }
     }
 }

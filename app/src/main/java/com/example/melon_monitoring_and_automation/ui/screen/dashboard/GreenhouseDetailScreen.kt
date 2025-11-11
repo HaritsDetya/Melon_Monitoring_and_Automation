@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,8 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.melon_monitoring_and_automation.domain.model.ChartDataPoint
 import com.example.melon_monitoring_and_automation.domain.model.ChartType
+import com.example.melon_monitoring_and_automation.domain.model.DateRange
 import com.example.melon_monitoring_and_automation.domain.model.SensorType
 import com.example.melon_monitoring_and_automation.domain.model.TimeRange
+import com.example.melon_monitoring_and_automation.ui.components.CustomDateRangeChip
+import com.example.melon_monitoring_and_automation.ui.components.DateRangePicker
 import com.example.melon_monitoring_and_automation.ui.components.SensorLineChart
 import com.example.melon_monitoring_and_automation.ui.viewmodel.ChartViewModel
 import com.example.melon_monitoring_and_automation.ui.viewmodel.GreenhouseViewModel
@@ -211,12 +216,18 @@ private fun SafeChartImplementation(greenhouseId: String) {
     val chartData by viewModel.chartData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val chartConfig by viewModel.chartConfig.collectAsState()
 
-    // 🔹 STATE untuk menangani chart errors
+    // ✅ PERBAIKAN: Tambah state untuk date range picker
+    val showDateRangePicker by viewModel.showDateRangePicker.collectAsState()
+    val availableMonths by viewModel.availableMonths.collectAsState()
+    val selectedMonth by viewModel.selectedMonth.collectAsState()
+    val weeklyRanges by viewModel.weeklyRanges.collectAsState()
+
     var chartError by remember { mutableStateOf<String?>(null) }
 
-    // Load data sekali saja saat pertama kali
-    LaunchedEffect(Unit) {
+    // Load data dan available months
+    LaunchedEffect(chartConfig.selectedSensorType, chartConfig.timeRange, chartConfig.customDateRange) {
         try {
             viewModel.loadChartData(greenhouseId)
         } catch (e: Exception) {
@@ -224,42 +235,148 @@ private fun SafeChartImplementation(greenhouseId: String) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Simple controls tanpa filter chips dulu
+    LaunchedEffect(Unit) {
+        viewModel.loadAvailableMonths(greenhouseId)
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // ✅ PERBAIKAN: Update ChartControls dengan custom range
+            EnhancedChartControls(
+                selectedSensorType = chartConfig.selectedSensorType,
+                selectedTimeRange = chartConfig.timeRange,
+                customDateRange = chartConfig.customDateRange,
+                onSensorTypeChanged = { viewModel.updateSensorType(it) },
+                onTimeRangeChanged = { viewModel.updateTimeRange(it) },
+                onCustomRangeClicked = { viewModel.showDateRangePicker() }
+            )
+
+            // Date Range Picker Overlay
+            DateRangePicker(
+                showDateRangePicker = showDateRangePicker,
+                availableMonths = availableMonths,
+                selectedMonth = selectedMonth,
+                weeklyRanges = weeklyRanges,
+                selectedTimeRange = chartConfig.timeRange,
+                customDateRange = chartConfig.customDateRange,
+                onMonthSelected = { viewModel.selectMonth(it) },
+                onDateRangeSelected = { viewModel.updateCustomDateRange(it) },
+                onClose = { viewModel.hideDateRangePicker() },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            // Error messages dan chart content (sama seperti sebelumnya)
+            if (!errorMessage.isNullOrEmpty()) {
+                ErrorMessageCard(message = errorMessage!!) {
+                    viewModel.clearErrorMessage()
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (!chartError.isNullOrEmpty()) {
+                ErrorMessageCard(message = chartError!!) {
+                    chartError = null
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (isLoading) {
+                LoadingChartPlaceholder()
+            } else if (!chartError.isNullOrEmpty()) {
+                ChartErrorFallback(errorMessage = chartError!!, dataSize = chartData.size)
+            } else if (chartData.isEmpty()) {
+                EmptyChartPlaceholder()
+            } else {
+                SafeSensorLineChart(
+                    dataPoints = chartData,
+                    yAxisLabel = viewModel.getYAxisLabel(),
+                    chartTitle = viewModel.getChartTitle(),
+                    onError = { error -> chartError = error }
+                )
+            }
+        }
+    }
+}
+
+// ✅ PERBAIKAN: Enhanced Chart Controls dengan custom range
+@Composable
+fun EnhancedChartControls(
+    selectedSensorType: SensorType,
+    selectedTimeRange: TimeRange,
+    customDateRange: DateRange?,
+    onSensorTypeChanged: (SensorType) -> Unit,
+    onTimeRangeChanged: (TimeRange) -> Unit,
+    onCustomRangeClicked: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
         Text(
             "Grafik Sensor",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // Error Message dari ViewModel
-        if (!errorMessage.isNullOrEmpty()) {
-            ErrorMessageCard(message = errorMessage!!) {
-                viewModel.clearErrorMessage()
+        // Sensor Type Filter
+        Text(
+            "Jenis Sensor:",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            SensorType.entries.forEach { sensorType ->
+                FilterChip(
+                    selected = selectedSensorType == sensorType,
+                    onClick = { onSensorTypeChanged(sensorType) },
+                    label = { Text(getSensorTypeDisplayName(sensorType)) },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Error Message dari Chart
-        if (!chartError.isNullOrEmpty()) {
-            ErrorMessageCard(message = chartError!!) {
-                chartError = null
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Time Range Filter dengan Custom Option
+        Text(
+            "Rentang Waktu:",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Predefined ranges
+            TimeRange.entries.forEach { timeRange ->
+                if (timeRange != TimeRange.CUSTOM) {
+                    FilterChip(
+                        selected = selectedTimeRange == timeRange,
+                        onClick = { onTimeRangeChanged(timeRange) },
+                        label = {
+                            Text(
+                                getTimeRangeDisplayName(timeRange)
+                            )
+                        },
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+
+            // Custom range chip
+            CustomDateRangeChip(
+                isSelected = selectedTimeRange == TimeRange.CUSTOM,
+                customDateRange = customDateRange,
+                onClick = onCustomRangeClicked
+            )
         }
 
-        // Chart Display dengan state-based rendering
-        if (isLoading) {
-            LoadingChartPlaceholder()
-        } else if (!chartError.isNullOrEmpty()) {
-            ChartErrorFallback(errorMessage = chartError!!, dataSize = chartData.size)
-        } else {
-            // 🔹 GUARD CLAUSE untuk prevent invalid data
-            SafeSensorLineChart(
-                dataPoints = chartData,
-                yAxisLabel = viewModel.getYAxisLabel(),
-                chartTitle = viewModel.getChartTitle(),
-                onError = { error -> chartError = error }
+        // ✅ PERBAIKAN: Tampilkan info custom range yang aktif
+        if (selectedTimeRange == TimeRange.CUSTOM && customDateRange != null) {
+            Text(
+                text = "Rentang kustom: ${customDateRange.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF388E3C),
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }
@@ -383,28 +500,6 @@ fun ChartErrorFallback(errorMessage: String, dataSize: Int) {
     }
 }
 
-@Composable
-fun StatItem(label: String, value: Double, unit: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "%.1f".format(value),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF388E3C)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-        Text(
-            text = unit,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-    }
-}
-
 // Helper functions
 private fun getSensorTypeDisplayName(sensorType: SensorType): String {
     return when (sensorType) {
@@ -416,20 +511,51 @@ private fun getSensorTypeDisplayName(sensorType: SensorType): String {
     }
 }
 
-private fun getTimeRangeDisplayName(timeRange: TimeRange): String {
+private fun getTimeRangeDisplayName(timeRange: TimeRange, customDateRange: DateRange? = null): String {
     return when (timeRange) {
         TimeRange.HOURS_24 -> "24 Jam"
         TimeRange.DAYS_7 -> "7 Hari"
         TimeRange.DAYS_30 -> "30 Hari"
+        TimeRange.CUSTOM -> customDateRange?.let {
+            "Kustom: ${it.label}"
+        } ?: "Rentang Kustom"
     }
 }
 
-private fun getSensorUnit(sensorType: SensorType): String {
-    return when (sensorType) {
-        SensorType.TEMPERATURE -> "°C"
-        SensorType.HUMIDITY -> "%"
-        SensorType.WATER_TEMPERATURE -> "°C"
-        SensorType.PH -> "pH"
-        SensorType.TDS -> "ppm"
+@Composable
+fun EmptyChartPlaceholder() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .padding(16.dp)
+            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Build,
+                contentDescription = "Empty Chart",
+                tint = Color(0xFF9E9E9E),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Tidak Ada Data",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF757575),
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Tidak ada data sensor yang tersedia\nuntuk rentang waktu yang dipilih",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF9E9E9E),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

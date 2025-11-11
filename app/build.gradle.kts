@@ -79,6 +79,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.github.jan-tennert.supabase:gotrue-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.github.jan-tennert.supabase:functions-kt")
 //    implementation("io.ktor:ktor-client-android:3.3.0")
     implementation("io.ktor:ktor-client-okhttp:2.3.9")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")

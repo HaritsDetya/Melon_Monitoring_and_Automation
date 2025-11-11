@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
@@ -28,9 +30,18 @@ fun MainApp() {
     val context = LocalContext.current
     val activity = context as? MainActivity
 
+    val authSuccess by authViewModel.authSuccess.collectAsState()
     val authState by authViewModel.authSuccess.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by authViewModel.isLoading.collectAsStateWithLifecycle()
+
+    LaunchedEffect(authSuccess, currentUser, isLoading) {
+        println("🔹 [MAIN APP] State Update:")
+        println("🔹   - isLoading: $isLoading")
+        println("🔹   - authSuccess: $authSuccess")
+        println("🔹   - currentUser: ${currentUser?.email}")
+        println("🔹 [MAIN APP] Current route: ${navController.currentBackStackEntry?.destination?.route}")
+    }
 
     // Cek jika perlu navigate ke reset password dari deep link
     LaunchedEffect(Unit) {

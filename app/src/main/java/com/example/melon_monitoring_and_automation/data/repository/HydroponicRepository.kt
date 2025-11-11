@@ -12,6 +12,7 @@ import com.example.melon_monitoring_and_automation.domain.model.SensorHistory
 import com.example.melon_monitoring_and_automation.domain.model.SensorReadings
 import com.example.melon_monitoring_and_automation.domain.model.SensorType
 import com.example.melon_monitoring_and_automation.domain.model.User
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
@@ -20,8 +21,10 @@ import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -29,11 +32,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
-import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class HydroponicRepository {
@@ -169,23 +172,70 @@ class HydroponicRepository {
             }
         }
 
-    // 🔹 Simpan profil user ke tabel "users"
-    suspend fun saveUserProfile(user: User) = withContext(Dispatchers.IO) {
-        supabaseClient.postgrest["users"].insert(user)
-    }
+    suspend fun deleteUserAccount(): NetworkResult<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] === EDGE FUNCTION CALL ===")
 
-    // 🔹 Ambil profil user berdasarkan ID - FIXED
-    suspend fun getUserProfile(userId: String): User? = withContext(Dispatchers.IO) {
-        try {
-            supabaseClient.postgrest["users"]
-                .select {
-                    filter {
-                        eq("id", userId)
+                val currentUser = SupabaseManager.client.auth.currentUserOrNull()
+                if (currentUser == null) {
+                    return@withContext NetworkResult.Error("No authenticated user found", 401)
+                }
+
+                val userId = currentUser.id
+                val adminSecret = "melon_app_delete_2024_secret"
+
+                println("🔹 [REPO] Calling function for user: $userId")
+
+                // ✅ PERBAIKAN: Kirim user_id dalam body dengan format JSON yang benar
+                val response = SupabaseManager.client.functions
+                    .invoke("delete-auth-account") {
+                        header("x-admin-secret", adminSecret)
+                        header("Content-Type", "application/json")
+                        setBody("""{"user_id": "$userId"}""") // ← KIRIM BODY DENGAN FORMAT JSON
+                    }
+
+                val statusCode = response.status.value
+                println("🔹 [REPO] Response status: $statusCode")
+
+                // ✅ Coba baca response body untuk debug
+                try {
+                    val responseBody = response.body<String>()
+                    println("🔹 [REPO] Response body: $responseBody")
+                } catch (e: Exception) {
+                    println("🔹 [REPO] Cannot read response body: ${e.message}")
+                }
+
+                when (statusCode) {
+                    200 -> {
+                        println("🔹 [REPO] ✅ SUCCESS - Account deleted")
+                        SupabaseManager.client.auth.signOut()
+                        clearLocalCache()
+                        NetworkResult.Success(true)
+                    }
+                    401 -> {
+                        println("🔹 [REPO] ❌ ERROR 401 - Invalid secret")
+                        NetworkResult.Error("Security error: Invalid credentials", 401)
+                    }
+                    404 -> {
+                        println("🔹 [REPO] ❌ ERROR 404 - User not found")
+                        NetworkResult.Error("User account not found", 404)
+                    }
+                    500 -> {
+                        println("🔹 [REPO] ❌ ERROR 500 - Server error")
+                        NetworkResult.Error("Server error, please try again later", 500)
+                    }
+                    else -> {
+                        println("🔹 [REPO] ❌ ERROR $statusCode - Unknown error")
+                        NetworkResult.Error("Unexpected error: $statusCode")
                     }
                 }
-                .decodeSingleOrNull<User>()
-        } catch (e: Exception) {
-            null
+
+            } catch (e: Exception) {
+                println("🔹 [REPO] ❌ EXCEPTION: ${e.message}")
+                e.printStackTrace()
+                NetworkResult.Error("Network error: ${e.message}")
+            }
         }
     }
 
@@ -383,7 +433,6 @@ class HydroponicRepository {
         return apiService.getLatestSensorReading(greenhouseId)
     }
 
-    // 🔹 Ambil data history sensor - ✅ FIXED (timestamp format)
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun getSensorHistory(
         greenhouseId: String,
@@ -392,28 +441,34 @@ class HydroponicRepository {
     ): NetworkResult<List<SensorHistory>> {
         return withContext(Dispatchers.IO) {
             try {
-                // Calculate cutoff time using ISO format yang compatible dengan Supabase
-                val cutoffTime = java.time.Instant.now()
-                    .minusSeconds((hours * 3600).toLong())
-                    .toString()
+                println("🔹 [REPO] Fetching sensor history: greenhouse=$greenhouseId, type=$sensorType, hours=$hours")
 
-                println("🔹 [REPO] Fetching sensor history: greenhouse=$greenhouseId, type=$sensorType, hours=$hours, cutoff=$cutoffTime")
-
+                // ✅ PERBAIKAN: Gunakan limit dan order yang tepat
                 val result: List<SensorHistory> = SupabaseManager.client.postgrest["sensor_history"]
                     .select {
                         filter {
                             eq("greenhouse_id", greenhouseId)
                             eq("sensor_type", sensorType.name)
-                            gt("recorded_at", cutoffTime)
+                            // Hapus filter waktu sementara untuk testing
+                            // gt("recorded_at", cutoffTime)
                         }
-                        order("recorded_at", Order.ASCENDING)
+                        order("recorded_at", Order.ASCENDING) // ✅ Urutkan dari terlama ke terbaru
+                        limit(1000) // ✅ Batasi jumlah data
                     }
                     .decodeList()
 
                 println("🔹 [REPO] Sensor history fetched: ${result.size} records")
+
+                // ✅ Debug: Print sample data
+                if (result.isNotEmpty()) {
+                    println("🔹 [REPO] Sample data - First: ${result.first().recordedAt} = ${result.first().value}")
+                    println("🔹 [REPO] Sample data - Last: ${result.last().recordedAt} = ${result.last().value}")
+                }
+
                 NetworkResult.Success(result)
             } catch (e: Exception) {
                 println("🔹 [REPO] Error fetching sensor history: ${e.message}")
+                e.printStackTrace()
                 NetworkResult.Error(e.localizedMessage ?: "Failed to fetch sensor history: ${e.message}")
             }
         }
@@ -424,56 +479,10 @@ class HydroponicRepository {
         return apiService.getControlDevice(greenhouseId)
     }
 
-    // 🔹 Update status perangkat kontrol
-    suspend fun updateControlDevice(deviceId: String, newState: ControlDevices): NetworkResult<Unit> {
-        return apiService.updateControlDevice(deviceId, newState)
-    }
-
     // 🔹 Create control device if not exists
     suspend fun createControlDeviceIfNotExists(greenhouseId: String): NetworkResult<ControlDevices> {
         return apiService.createControlDeviceIfNotExists(greenhouseId)
     }
-
-    // 🔹 FIXED: getRealtimeSensorData tanpa fungsi suspensi di awaitClose
-    fun getRealtimeSensorData(greenhouseId: String): Flow<SensorReadings?> = callbackFlow {
-        println("🔹 [REPO] Starting realtime sensor data for greenhouse: $greenhouseId")
-
-        val channel = supabaseClient.realtime.channel("sensor_updates_$greenhouseId")
-
-        try {
-            channel.subscribe()
-            println("🔹 [REPO] Realtime channel subscribed")
-
-            val job = launch {
-                channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                    table = "sensor_readings"
-                    filter = "greenhouse_id=eq.$greenhouseId"
-                }.collect { change ->
-                    try {
-                        val recordJson = change.record.toString()
-                        println("🔹 [REPO] Received sensor update: $recordJson")
-
-                        val json = Json { ignoreUnknownKeys = true }
-                        val sensor = json.decodeFromString<SensorReadings>(recordJson)
-                        trySend(sensor)
-                    } catch (e: Exception) {
-                        println("🔹 [REPO] Error parsing sensor update: ${e.message}")
-                        trySend(null)
-                    }
-                }
-            }
-
-            awaitClose {
-                println("🔹 [REPO] Closing realtime sensor channel")
-                job.cancel()
-                // HAPUS LINE INI: supabaseClient.realtime.removeChannel(channel)
-                // Channel akan otomatis di-handle oleh Supabase client
-            }
-        } catch (e: Exception) {
-            println("🔹 [REPO] Error in realtime sensor: ${e.message}")
-            close(e)
-        }
-    }.flowOn(Dispatchers.IO)
 
     // --- 🔹 Realtime Control Device Updates - FIXED (coroutine issue) ---
     fun getRealtimeDeviceUpdates(greenhouseId: String): Flow<ControlDevices?> = callbackFlow {
@@ -530,6 +539,48 @@ class HydroponicRepository {
             } catch (e: Exception) {
                 println("🔹 [REPO] Error updating device control: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to update device control: ${e.message}")
+            }
+        }
+    }
+
+    // Tambahkan method baru di repository
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getSensorHistoryByDateRange(
+        greenhouseId: String,
+        sensorType: SensorType,
+        startDate: Long,
+        endDate: Long
+    ): NetworkResult<List<SensorHistory>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // ✅ PERBAIKAN: Convert timestamps dengan format yang benar
+                val startIso = Instant.ofEpochMilli(startDate)
+                    .atZone(ZoneId.of("UTC"))
+                    .format(DateTimeFormatter.ISO_INSTANT)
+
+                val endIso = Instant.ofEpochMilli(endDate)
+                    .atZone(ZoneId.of("UTC"))
+                    .format(DateTimeFormatter.ISO_INSTANT)
+
+                println("🔹 [REPO] Fetching sensor history by date range: $startIso to $endIso")
+
+                val result: List<SensorHistory> = SupabaseManager.client.postgrest["sensor_history"]
+                    .select {
+                        filter {
+                            eq("greenhouse_id", greenhouseId)
+                            eq("sensor_type", sensorType.name)
+                            gte("recorded_at", startIso)
+                            lte("recorded_at", endIso)
+                        }
+                        order("recorded_at", Order.ASCENDING)
+                    }
+                    .decodeList()
+
+                println("🔹 [REPO] Date range history fetched: ${result.size} records")
+                NetworkResult.Success(result)
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error fetching date range history: ${e.message}")
+                NetworkResult.Error(e.localizedMessage ?: "Failed to fetch date range history")
             }
         }
     }

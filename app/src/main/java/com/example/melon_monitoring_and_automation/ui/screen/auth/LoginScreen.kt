@@ -264,23 +264,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (BuildConfig.DEBUG) {
-                Button(
-                    onClick = {
-                        // Navigate langsung ke reset password screen untuk testing
-                        navController.navigate(Screen.ResetPassword.route)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
-                ) {
-                    Text(
-                        "[TEST] Manual Reset Password Screen",
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-
             // Register Navigation
             TextButton(
                 onClick = {
