@@ -1,15 +1,9 @@
 package com.example.melon_monitoring_and_automation
 
-import android.content.Context
-import androidx.activity.ComponentActivity
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
@@ -19,6 +13,7 @@ import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.ResetPasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.GreenhouseDetailScreen
+import com.example.melon_monitoring_and_automation.ui.screen.profile.ChangePasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.splash.SplashScreen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -30,91 +25,84 @@ fun MainApp() {
     val context = LocalContext.current
     val activity = context as? MainActivity
 
-    val authSuccess by authViewModel.authSuccess.collectAsState()
-    val authState by authViewModel.authSuccess.collectAsStateWithLifecycle()
+    val authSuccess by authViewModel.authSuccess.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by authViewModel.isLoading.collectAsStateWithLifecycle()
 
-    LaunchedEffect(authSuccess, currentUser, isLoading) {
-        println("🔹 [MAIN APP] State Update:")
-        println("🔹   - isLoading: $isLoading")
-        println("🔹   - authSuccess: $authSuccess")
-        println("🔹   - currentUser: ${currentUser?.email}")
-        println("🔹 [MAIN APP] Current route: ${navController.currentBackStackEntry?.destination?.route}")
-    }
+    // 🔹 PERBAIKAN: State untuk menangani multiple deep links
+    var processedDeepLinks by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Cek jika perlu navigate ke reset password dari deep link
+    // 🔹 PERBAIKAN: Improved deep link handling
     LaunchedEffect(Unit) {
-        if (activity?.shouldNavigateToResetPassword() == true) {
-            println("🔹 [MAIN APP] Navigating to reset password from deep link")
-            navController.navigate("reset_password") {
-                popUpTo("login") { inclusive = true }
+        delay(1500) // Tunggu app lebih stabil
+
+        // Cek deep link untuk reset password
+        val pendingDeepLink = activity?.getPendingDeepLinkInstance()
+        if (pendingDeepLink != null && !processedDeepLinks.contains(pendingDeepLink.toString())) {
+            println("🔹 [MAIN APP] Processing pending deep link: $pendingDeepLink")
+
+            val fragment = pendingDeepLink.fragment
+            when {
+                // Valid reset password link
+                fragment?.contains("access_token") == true -> {
+                    println("🔹 [MAIN APP] ✅ Valid reset password deep link")
+
+                    // Mark as processed
+                    processedDeepLinks = processedDeepLinks + pendingDeepLink.toString()
+
+                    // Navigate ke ResetPasswordScreen
+                    navController.navigate(Screen.ResetPassword.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+                // Error link
+                fragment?.contains("error") == true -> {
+                    println("🔹 [MAIN APP] ❌ Error deep link: $fragment")
+
+                    // Mark as processed
+                    processedDeepLinks = processedDeepLinks + pendingDeepLink.toString()
+
+                    // Parse error message
+                    val errorMessage = parseDeepLinkError(fragment)
+                    println("🔹 [MAIN APP] Error message: $errorMessage")
+
+                    // Set error message di ViewModel
+                    authViewModel.setErrorMessage(errorMessage)
+
+                    // Navigate ke Login dengan error
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
             }
+            activity?.markDeepLinkProcessed()
         }
     }
 
-    LaunchedEffect(Unit) {
-        delay(1000) // Tunggu setup selesai
-        val currentSession = authViewModel.getCurrentSession()
-        val currentUser = authViewModel.getCurrentUser()
-
-        println("🔹 [MAIN APP] Session on start: ${currentSession != null}")
-        println("🔹 [MAIN APP] User on start: ${currentUser?.email ?: "null"}")
-    }
-
-    // 🔹 FIX: Handle deep link navigation
-    LaunchedEffect(Unit) {
-        // Check jika ada deep link yang perlu dihandle
-        val sharedPref = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val shouldNavigateToReset = sharedPref.getBoolean("should_navigate_to_reset", false)
-
-        if (shouldNavigateToReset) {
-            println("🔹 [MAIN APP] Deep link navigation triggered")
-            navController.navigate(Screen.ResetPassword.route)
-            // Clear flag
-            sharedPref.edit().putBoolean("should_navigate_to_reset", false).apply()
-        }
-
-        // Check intent extras
-        val activity = context as? ComponentActivity
-        val navigateTo = activity?.intent?.getStringExtra("NAVIGATE_TO")
-        if (navigateTo == "RESET_PASSWORD") {
-            println("🔹 [MAIN APP] Intent navigation to ResetPassword")
-            navController.navigate(Screen.ResetPassword.route)
-            // Clear intent
-            activity.intent.removeExtra("NAVIGATE_TO")
-        }
-    }
-
-    // 🔹 FIX: Simplified auth state handling - hanya di MainApp
-    LaunchedEffect(authState, currentUser, isLoading) {
-        println("🔹 [MAIN APP] State Update:")
-        println("🔹   - isLoading: $isLoading")
-        println("🔹   - authSuccess: $authState")
-        println("🔹   - currentUser: ${currentUser?.email ?: "null"}")
-
+    // 🔹 FIX: Simplified auth state handling
+    LaunchedEffect(authSuccess, currentUser, isLoading) {
         if (!isLoading) {
             val currentRoute = navController.currentBackStackEntry?.destination?.route
-            println("🔹 [MAIN APP] Current route: $currentRoute")
 
-            when {
-                authState && currentUser != null -> {
-                    // User authenticated - navigate to main app
-                    if (currentRoute != "main_app_graph" && currentRoute != "main_tabs" &&
-                        !currentRoute.isNullOrEmpty() && currentRoute.contains("auth")) {
-                        println("🔹 [MAIN APP] ✅ User authenticated, navigating to main app")
+            println("🔹 [MAIN APP] Auth State:")
+            println("🔹   - Route: $currentRoute")
+            println("🔹   - Auth Success: $authSuccess")
+            println("🔹   - Current User: ${currentUser?.email}")
+            println("🔹   - Loading: $isLoading")
+
+            // Only handle navigation if we're in splash screen
+            if (currentRoute == Screen.Splash.route) {
+                when {
+                    authSuccess && currentUser != null -> {
+                        println("🔹 [MAIN APP] ✅ User authenticated, going to main app")
                         navController.navigate("main_app_graph") {
-                            popUpTo("auth_graph") { inclusive = true }
+                            popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     }
-                }
-                !authState && currentUser == null -> {
-                    // User not authenticated - navigate to auth
-                    if (currentRoute != "auth_graph" && currentRoute != Screen.Login.route &&
-                        !currentRoute.isNullOrEmpty() && currentRoute.contains("main_app")) {
-                        println("🔹 [MAIN APP] ❌ User not authenticated, navigating to auth")
+                    else -> {
+                        println("🔹 [MAIN APP] ❌ User not authenticated, going to auth")
                         navController.navigate("auth_graph") {
-                            popUpTo("main_app_graph") { inclusive = true }
+                            popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     }
                 }
@@ -122,25 +110,25 @@ fun MainApp() {
         }
     }
 
-    // 🔹 FIX: Initial auth check - dengan delay untuk memastikan setup selesai
+    // 🔹 FIX: Initial auth check
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] Initializing app...")
-        delay(1000) // Tunggu setup selesai
+        delay(500)
         authViewModel.enableAutoCheck()
         authViewModel.checkAuthStatus()
     }
 
-    // 🔹 FIXED: Start with Splash screen
+    // 🔹 FIXED: Clean navigation graph
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route // Start with splash
+        startDestination = Screen.Splash.route
     ) {
-        // Splash Screen
+        // Splash Screen - biarkan handle auth decision
         composable(Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
 
-        // Auth Navigation
+        // Auth Navigation Graph
         navigation(
             startDestination = Screen.Login.route,
             route = "auth_graph"
@@ -156,7 +144,6 @@ fun MainApp() {
             }
         }
 
-        // Main App Navigation
         navigation(
             startDestination = "main_tabs",
             route = "main_app_graph"
@@ -171,6 +158,21 @@ fun MainApp() {
                     onBackClick = { navController.popBackStack() }
                 )
             }
+            // ✅ TAMBAHKAN INI - Route untuk Change Password
+            composable("change_password") {
+                ChangePasswordScreen(navController = navController)
+            }
         }
+    }
+}
+
+// 🔹 TAMBAHKAN: Fungsi untuk parse error deep link
+private fun parseDeepLinkError(errorFragment: String): String {
+    return when {
+        errorFragment.contains("otp_expired") -> "Link reset password sudah kadaluarsa. Silakan request link baru."
+        errorFragment.contains("access_denied") -> "Akses ditolak. Link reset password tidak valid."
+        errorFragment.contains("invalid") -> "Link reset password tidak valid."
+        errorFragment.contains("Email+link+is+invalid+or+has+expired") -> "Link reset password sudah kadaluarsa atau tidak valid. Silakan request link baru."
+        else -> "Terjadi error dengan link reset password. Silakan request link baru."
     }
 }

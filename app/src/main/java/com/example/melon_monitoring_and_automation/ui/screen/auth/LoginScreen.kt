@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.BuildConfig
+import com.example.melon_monitoring_and_automation.MainActivity
 import com.example.melon_monitoring_and_automation.R
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
@@ -65,6 +67,46 @@ fun LoginScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val authSuccess by viewModel.authSuccess.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+
+    val context = LocalContext.current
+    val activity = context as? MainActivity
+
+    // State untuk reset password error
+    var showResetError by remember { mutableStateOf(false) }
+    var resetErrorMsg by remember { mutableStateOf("") }
+
+    // 🔹 PERBAIKAN: Improved deep link error handling
+    LaunchedEffect(Unit) {
+        // Cek jika ada error dari deep link
+        val pendingDeepLink = activity?.getPendingDeepLinkInstance()
+        if (pendingDeepLink?.fragment?.contains("error") == true) {
+            println("🔹 [LOGIN SCREEN] Error deep link detected: ${pendingDeepLink.fragment}")
+            val errorMessage = viewModel.parseDeepLinkError(pendingDeepLink.fragment!!)
+            viewModel.setErrorMessage(errorMessage)
+            activity.markDeepLinkProcessed()
+        }
+    }
+
+    LaunchedEffect(showResetDialog) {
+        if (!showResetDialog) {
+            // Clear error ketika dialog ditutup
+            viewModel.clearErrorMessage()
+        }
+    }
+
+    // Dalam UI, tambahkan error dialog
+    if (showResetError) {
+        AlertDialog(
+            onDismissRequest = { showResetError = false },
+            title = { Text("Link Reset Password Error") },
+            text = { Text(resetErrorMsg) },
+            confirmButton = {
+                Button(onClick = { showResetError = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     // 🔹 FIX: Manual navigation trigger sebagai fallback
     LaunchedEffect(authSuccess, currentUser) {

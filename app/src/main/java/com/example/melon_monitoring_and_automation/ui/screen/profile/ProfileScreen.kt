@@ -244,7 +244,7 @@ fun ProfileScreen(
             // User's Greenhouses
             UserGreenhousesSection(greenhouses = greenhouses)
 
-            // Action Buttons
+            // Update pemanggilan ProfileActionsSection
             ProfileActionsSection(
                 onLogout = {
                     println("🔹 [PROFILE] Logout button clicked")
@@ -254,6 +254,11 @@ fun ProfileScreen(
                 onDeleteAccount = {
                     println("🔹 [PROFILE] Delete account clicked")
                     showDeleteConfirmation = true
+                },
+                onChangePassword = {
+                    println("🔹 [PROFILE] Change password clicked")
+                    // Navigate ke Change Password Screen
+                    navController.navigate("change_password")
                 }
             )
         }
@@ -506,9 +511,9 @@ fun GreenhouseProfileCard(greenhouse: Greenhouse) {
 @Composable
 fun ProfileActionsSection(
     onLogout: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onDeleteAccount: () -> Unit,
+    onChangePassword: () -> Unit  // Tambahkan parameter baru
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -522,6 +527,19 @@ fun ProfileActionsSection(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Change Password Button - TAMBAHKAN INI
+            Button(
+                onClick = onChangePassword,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2196F3)
+                )
+            ) {
+                Text("Ubah Password")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Logout Button
             Button(
@@ -538,7 +556,7 @@ fun ProfileActionsSection(
 
             // Delete Account Button
             TextButton(
-                onClick = onDeleteAccount, // 🔹 LANGSUNG panggil onDeleteAccount
+                onClick = onDeleteAccount,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(

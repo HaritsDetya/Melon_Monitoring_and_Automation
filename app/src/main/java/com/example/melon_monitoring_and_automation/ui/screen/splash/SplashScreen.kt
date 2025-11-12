@@ -26,7 +26,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.R
-import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -40,18 +39,31 @@ fun SplashScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        // Tunggu 2 detik saja, jangan check auth status
+    LaunchedEffect(authState, currentUser, isLoading) {
+        // Tunggu 2 detik untuk splash screen dan auth check
         delay(2000)
 
-        // Selalu navigate ke login, regardless of auth status
-        println("🔹 [SPLASH] Always navigating to login screen")
-        navController.navigate(Screen.Login.route) {
-            popUpTo(Screen.Splash.route) { inclusive = true }
-        }
+        println("🔹 [SPLASH] Auth Check:")
+        println("🔹   - Auth Success: $authState")
+        println("🔹   - Current User: ${currentUser?.email}")
+        println("🔹   - Loading: $isLoading")
 
-        // Clear any cached auth state untuk prevent auto-login
-        viewModel.clearAllStates()
+        when {
+            // User sudah login - langsung ke main app
+            authState && currentUser != null -> {
+                println("🔹 [SPLASH] ✅ User authenticated, going to main app")
+                navController.navigate("main_app_graph") {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+            // User belum login - ke login screen
+            else -> {
+                println("🔹 [SPLASH] ❌ User not authenticated, going to login")
+                navController.navigate("auth_graph") {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+        }
     }
 
     Box(

@@ -19,6 +19,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,6 +36,9 @@ fun ResetPasswordDialog(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val passwordResetSent by viewModel.passwordResetSent.collectAsState()
+
+    // 🔹 TAMBAHKAN: Dapatkan context
+    val context = LocalContext.current
 
     // Auto-close dialog ketika reset password berhasil dikirim
     LaunchedEffect(passwordResetSent) {
@@ -109,7 +113,8 @@ fun ResetPasswordDialog(
             Button(
                 onClick = {
                     viewModel.clearErrorMessage()
-                    onSend(emailInput)
+                    // 🔹 PERBAIKAN: Gunakan fungsi dengan context
+                    viewModel.sendPasswordResetEmail(emailInput, context)
                 },
                 enabled = emailInput.isNotBlank() && !isLoading && !passwordResetSent,
                 modifier = Modifier.padding(end = 8.dp)
