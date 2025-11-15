@@ -6,8 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-<!--    CINDq4w2XY8oNLxi-->
-
     <application
         android:name=".HydroponicApp"
         android:allowBackup="true"

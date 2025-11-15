@@ -38,8 +38,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideHydroponicRepository(): HydroponicRepository {
-        return HydroponicRepository()
+    fun provideHydroponicRepository(
+        @ApplicationContext context: Context
+    ): HydroponicRepository {
+        return HydroponicRepository(context)
     }
 
     @Provides

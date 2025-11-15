@@ -1,9 +1,11 @@
 package com.example.melon_monitoring_and_automation
 
+import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
@@ -29,80 +31,61 @@ fun MainApp() {
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by authViewModel.isLoading.collectAsStateWithLifecycle()
 
-    // 🔹 PERBAIKAN: State untuk menangani multiple deep links
-    var processedDeepLinks by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // 🔹 PERBAIKAN: State untuk track apakah sudah process deep link
+    var hasProcessedDeepLink by remember { mutableStateOf(false) }
 
-    // 🔹 PERBAIKAN: Improved deep link handling
+    // 🔹 FIX: Enhanced initial app startup dengan session restoration
     LaunchedEffect(Unit) {
-        delay(1500) // Tunggu app lebih stabil
+        println("🔹 [MAIN APP] 🚀 App starting...")
 
-        // Cek deep link untuk reset password
+        // Step 1: Enable auto-check dan check auth status
+        authViewModel.enableAutoCheck()
+
+        // Step 2: Beri waktu untuk supabase client initialize dan auth check
+        delay(2000)
+
+        println("🔹 [MAIN APP] ✅ App initialization completed")
+    }
+
+    // 🔹 FIX: Enhanced deep link handling
+    LaunchedEffect(Unit) {
+        println("🔹 [MAIN APP] 🚀 INITIAL DEEP LINK CHECK STARTED")
+        delay(1000) // Tunggu lebih lama untuk pastikan auth check selesai
+
         val pendingDeepLink = activity?.getPendingDeepLinkInstance()
-        if (pendingDeepLink != null && !processedDeepLinks.contains(pendingDeepLink.toString())) {
-            println("🔹 [MAIN APP] Processing pending deep link: $pendingDeepLink")
+        println("🔹 [MAIN APP] 🔍 Initial deep link check: $pendingDeepLink")
 
-            val fragment = pendingDeepLink.fragment
-            when {
-                // Valid reset password link
-                fragment?.contains("access_token") == true -> {
-                    println("🔹 [MAIN APP] ✅ Valid reset password deep link")
-
-                    // Mark as processed
-                    processedDeepLinks = processedDeepLinks + pendingDeepLink.toString()
-
-                    // Navigate ke ResetPasswordScreen
-                    navController.navigate(Screen.ResetPassword.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                }
-                // Error link
-                fragment?.contains("error") == true -> {
-                    println("🔹 [MAIN APP] ❌ Error deep link: $fragment")
-
-                    // Mark as processed
-                    processedDeepLinks = processedDeepLinks + pendingDeepLink.toString()
-
-                    // Parse error message
-                    val errorMessage = parseDeepLinkError(fragment)
-                    println("🔹 [MAIN APP] Error message: $errorMessage")
-
-                    // Set error message di ViewModel
-                    authViewModel.setErrorMessage(errorMessage)
-
-                    // Navigate ke Login dengan error
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                }
+        if (pendingDeepLink != null && !hasProcessedDeepLink) {
+            processDeepLink(pendingDeepLink, navController, activity) {
+                hasProcessedDeepLink = true
             }
-            activity?.markDeepLinkProcessed()
+        } else {
+            println("🔹 [MAIN APP] ℹ️ No initial deep link to process")
         }
     }
 
-    // 🔹 FIX: Simplified auth state handling
+    // 🔹 FIX: Enhanced auth state handling
     LaunchedEffect(authSuccess, currentUser, isLoading) {
+        println("🔹 [MAIN APP] Auth State - Success: $authSuccess, User: ${currentUser?.email}, Loading: $isLoading")
+
         if (!isLoading) {
             val currentRoute = navController.currentBackStackEntry?.destination?.route
+            println("🔹 [MAIN APP] Current Route: $currentRoute")
 
-            println("🔹 [MAIN APP] Auth State:")
-            println("🔹   - Route: $currentRoute")
-            println("🔹   - Auth Success: $authSuccess")
-            println("🔹   - Current User: ${currentUser?.email}")
-            println("🔹   - Loading: $isLoading")
-
-            // Only handle navigation if we're in splash screen
-            if (currentRoute == Screen.Splash.route) {
+            // Handle navigation based on auth state - hanya jika di splash atau auth flow
+            if (currentRoute == Screen.Splash.route || currentRoute?.startsWith("auth") == true) {
                 when {
                     authSuccess && currentUser != null -> {
-                        println("🔹 [MAIN APP] ✅ User authenticated, going to main app")
+                        println("🔹 [MAIN APP] ✅ User authenticated, navigating to main app")
+                        delay(1000) // Beri waktu untuk smooth transition
                         navController.navigate("main_app_graph") {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                         }
                     }
                     else -> {
-                        println("🔹 [MAIN APP] ❌ User not authenticated, going to auth")
-                        navController.navigate("auth_graph") {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        if (currentRoute == Screen.Splash.route) {
+                            println("🔹 [MAIN APP] ❌ User not authenticated, staying in auth flow")
+                            // Biarkan SplashScreen yang handle navigation ke auth
                         }
                     }
                 }
@@ -110,10 +93,29 @@ fun MainApp() {
         }
     }
 
-    // 🔹 FIX: Initial auth check
+    // 🔹 PERBAIKAN: Gunakan callback dari Activity untuk new deep links
+    DisposableEffect(activity) {
+        val listener = {
+            println("🔹 [MAIN APP] 📢 Activity notified new deep link!")
+            val pendingDeepLink = activity?.getPendingDeepLinkInstance()
+            if (pendingDeepLink != null && !hasProcessedDeepLink) {
+                processDeepLink(pendingDeepLink, navController, activity) {
+                    hasProcessedDeepLink = true
+                }
+            }
+        }
+
+        activity?.setDeepLinkListener(listener)
+
+        onDispose {
+            activity?.clearDeepLinkListener() // 🔹 Gunakan method clear
+        }
+    }
+
+    // 🔹 FIX: Initial auth check yang lebih robust
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] Initializing app...")
-        delay(500)
+        delay(1000) // Beri waktu lebih untuk initialization
         authViewModel.enableAutoCheck()
         authViewModel.checkAuthStatus()
     }
@@ -166,13 +168,31 @@ fun MainApp() {
     }
 }
 
-// 🔹 TAMBAHKAN: Fungsi untuk parse error deep link
-private fun parseDeepLinkError(errorFragment: String): String {
-    return when {
-        errorFragment.contains("otp_expired") -> "Link reset password sudah kadaluarsa. Silakan request link baru."
-        errorFragment.contains("access_denied") -> "Akses ditolak. Link reset password tidak valid."
-        errorFragment.contains("invalid") -> "Link reset password tidak valid."
-        errorFragment.contains("Email+link+is+invalid+or+has+expired") -> "Link reset password sudah kadaluarsa atau tidak valid. Silakan request link baru."
-        else -> "Terjadi error dengan link reset password. Silakan request link baru."
+// 🔹 EKSTRAK: Fungsi helper untuk process deep link
+private fun processDeepLink(
+    pendingDeepLink: Uri,
+    navController: NavController,
+    activity: MainActivity?,
+    onProcessed: () -> Unit
+) {
+    println("🔹 [MAIN APP] ✅ PROCESSING DEEP LINK")
+    onProcessed()
+
+    val fragment = pendingDeepLink.fragment
+    when {
+        fragment?.contains("access_token") == true -> {
+            println("🔹 [MAIN APP] ✅ Valid reset password deep link - NAVIGATING")
+            navController.navigate(Screen.ResetPassword.route) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
+        }
+        fragment?.contains("error") == true -> {
+            println("🔹 [MAIN APP] ❌ Error deep link")
+            // Untuk error, bisa langsung mark processed
+            activity?.markDeepLinkProcessed()
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
+        }
     }
 }

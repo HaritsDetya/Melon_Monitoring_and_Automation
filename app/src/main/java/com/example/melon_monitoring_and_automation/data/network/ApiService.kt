@@ -54,39 +54,6 @@ class ApiService(private val postgrest: Postgrest) {
         }
     }
 
-    // 🔹 Update device state - ✅ FIXED (simplified)
-    suspend fun updateControlDevice(deviceId: String, updatedDevice: ControlDevices): NetworkResult<Unit> {
-        return try {
-            postgrest["control_devices"]
-                .update({
-                    set("fan", updatedDevice.fan)
-                    set("pump", updatedDevice.pump)
-                    set("auto_mode", updatedDevice.autoMode)
-                    set("updated_at", System.now().toString())
-                }) {
-                    filter { eq("id", deviceId) }
-                }
-            NetworkResult.Success(Unit)
-        } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Failed to update device state: ${e.message}")
-        }
-    }
-
-    // 🔹 Get sensor history - ✅ OK
-    suspend fun getSensorHistory(greenhouseId: String): NetworkResult<List<SensorHistory>> {
-        return try {
-            val result: List<SensorHistory> = postgrest["sensor_history"]
-                .select {
-                    filter { eq("greenhouse_id", greenhouseId) }
-                    order("recorded_at", order = Order.DESCENDING)
-                }
-                .decodeList()
-            NetworkResult.Success(result)
-        } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Failed to fetch sensor history")
-        }
-    }
-
     // 🔹 Create new control device entry - ✅ FIXED (simplified approach)
     suspend fun createControlDeviceIfNotExists(greenhouseId: String): NetworkResult<ControlDevices> {
         return try {

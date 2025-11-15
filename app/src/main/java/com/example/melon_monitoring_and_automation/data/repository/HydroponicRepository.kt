@@ -1,5 +1,6 @@
 package com.example.melon_monitoring_and_automation.data.repository
 
+import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.example.melon_monitoring_and_automation.data.network.ApiService
@@ -39,7 +40,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class HydroponicRepository {
+class HydroponicRepository(
+    private val context: Context
+) {
 
     private val apiService = ApiService(SupabaseManager.client.postgrest)
     private val supabaseClient = SupabaseManager.client

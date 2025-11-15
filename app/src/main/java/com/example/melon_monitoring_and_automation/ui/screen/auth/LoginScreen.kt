@@ -2,6 +2,8 @@ package com.example.melon_monitoring_and_automation.ui.screen.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,10 +51,12 @@ import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.BuildConfig
 import com.example.melon_monitoring_and_automation.MainActivity
 import com.example.melon_monitoring_and_automation.R
+import com.example.melon_monitoring_and_automation.ui.components.PasswordValidator
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
+// Di LoginScreen.kt - PERBAIKI dengan approach yang benar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -62,6 +66,8 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showLoginPasswordInfo by remember { mutableStateOf(false) } // 🔹 FIX: Deklarasi variable
+    var isPasswordFocused by remember { mutableStateOf(false) }
 
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -71,13 +77,24 @@ fun LoginScreen(
     val context = LocalContext.current
     val activity = context as? MainActivity
 
-    // State untuk reset password error
-    var showResetError by remember { mutableStateOf(false) }
-    var resetErrorMsg by remember { mutableStateOf("") }
+    // Auto-show info ketika password focused dan tidak empty
+    if (isPasswordFocused && password.isNotEmpty()) {
+        showLoginPasswordInfo = true
+    }
+
+    // 🔹 PERBAIKAN: Handle navigation setelah login berhasil
+    LaunchedEffect(authSuccess, currentUser) {
+        if (authSuccess && currentUser != null && !isLoading) {
+            println("🔹 [LOGIN SCREEN] ✅ Login successful, navigating to main app")
+            delay(1000) // Beri waktu untuk melihat feedback UI
+            navController.navigate("main_app_graph") {
+                popUpTo(Screen.Login.route) { inclusive = true }
+            }
+        }
+    }
 
     // 🔹 PERBAIKAN: Improved deep link error handling
     LaunchedEffect(Unit) {
-        // Cek jika ada error dari deep link
         val pendingDeepLink = activity?.getPendingDeepLinkInstance()
         if (pendingDeepLink?.fragment?.contains("error") == true) {
             println("🔹 [LOGIN SCREEN] Error deep link detected: ${pendingDeepLink.fragment}")
@@ -87,57 +104,10 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(showResetDialog) {
-        if (!showResetDialog) {
-            // Clear error ketika dialog ditutup
-            viewModel.clearErrorMessage()
-        }
-    }
-
-    // Dalam UI, tambahkan error dialog
-    if (showResetError) {
-        AlertDialog(
-            onDismissRequest = { showResetError = false },
-            title = { Text("Link Reset Password Error") },
-            text = { Text(resetErrorMsg) },
-            confirmButton = {
-                Button(onClick = { showResetError = false }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    // 🔹 FIX: Manual navigation trigger sebagai fallback
-    LaunchedEffect(authSuccess, currentUser) {
-        if (authSuccess && currentUser != null && !isLoading) {
-            println("🔹 [LOGIN SCREEN] ✅ Login successful, checking navigation...")
-
-            // Tunggu sebentar untuk memastikan MainApp navigation bekerja
-            delay(2000)
-
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
-            println("🔹 [LOGIN SCREEN] Current route: $currentRoute")
-
-            // Jika masih di login screen setelah 2 detik, lakukan manual navigation
-            if (currentRoute == Screen.Login.route || currentRoute == "auth_graph") {
-                println("🔹 [LOGIN SCREEN] 🚀 Manual navigation to main app")
-                navController.navigate("main_app_graph") {
-                    popUpTo("auth_graph") { inclusive = true }
-                }
-            }
-        }
-    }
-
-    // Clear states hanya sekali saat screen dibuka
+    // 🔹 PERBAIKAN: Clear any pending deep links ketika masuk login screen
     LaunchedEffect(Unit) {
-        println("🔹 [LOGIN SCREEN] Initializing screen")
-        viewModel.clearAllStates()
-    }
-
-    // Debug states
-    LaunchedEffect(isLoading, authSuccess, currentUser) {
-        println("🔹 [LOGIN SCREEN] State - Loading: $isLoading, AuthSuccess: $authSuccess, User: ${currentUser?.email}")
+        println("🔹 [LOGIN SCREEN] Cleaning up any pending deep links")
+        viewModel.clearErrorMessage()
     }
 
     Box(
@@ -168,20 +138,10 @@ fun LoginScreen(
                     .background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        color = Color.White
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp), color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "Sedang login...",
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text("Sedang login...", color = Color.White, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -227,7 +187,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
+            // 🔹 PERBAIKAN: Password Field SEDERHANA tanpa validasi strength
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -252,6 +212,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(12.dp),
                 enabled = !isLoading
             )
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Error Message
@@ -269,17 +230,28 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Success Message (tampilkan jika login berhasil tapi belum navigate)
+            if (authSuccess && currentUser != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                ) {
+                    Text(
+                        text = "✅ Login berhasil! Mengarahkan ke dashboard...",
+                        color = Color(0xFF388E3C),
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Forgot Password
             TextButton(
                 modifier = Modifier.align(Alignment.Start),
                 onClick = { showResetDialog = true },
                 enabled = !isLoading
             ) {
-                Text(
-                    "Lupa Kata Sandi?",
-                    color = Color.Gray,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text("Lupa Kata Sandi?", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -295,10 +267,7 @@ fun LoginScreen(
                 enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
                     Text("Login", color = Color.White, fontSize = 16.sp)
                 }
@@ -314,11 +283,7 @@ fun LoginScreen(
                 },
                 enabled = !isLoading
             ) {
-                Text(
-                    "Belum memiliki akun?",
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Belum memiliki akun?", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
             }
         }
 
@@ -326,9 +291,7 @@ fun LoginScreen(
         if (showResetDialog) {
             ResetPasswordDialog(
                 onDismiss = { showResetDialog = false },
-                onSend = { resetEmail ->
-                    viewModel.sendPasswordResetEmail(resetEmail)
-                },
+                onSend = { resetEmail -> viewModel.sendPasswordResetEmail(resetEmail) },
                 viewModel = viewModel
             )
         }

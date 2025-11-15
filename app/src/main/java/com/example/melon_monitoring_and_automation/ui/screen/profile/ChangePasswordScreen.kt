@@ -1,6 +1,8 @@
 package com.example.melon_monitoring_and_automation.ui.screen.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,10 +43,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.melon_monitoring_and_automation.ui.components.PasswordValidator
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
-// Di file ChangePasswordScreen.kt - perbaiki parameter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangePasswordScreen(
@@ -54,6 +56,7 @@ fun ChangePasswordScreen(
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var showPasswordRequirements by remember { mutableStateOf(false) }
 
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -82,7 +85,6 @@ fun ChangePasswordScreen(
                 title = { Text("Ubah Password") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Gunakan navController untuk kembali
                         navController.popBackStack()
                     }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -140,29 +142,114 @@ fun ChangePasswordScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // New Password Field
-                    OutlinedTextField(
-                        value = newPassword,
-                        onValueChange = { newPassword = it },
-                        label = { Text("Password Baru") },
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = "New Password")
-                        },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isLoading,
-                        isError = newPassword.isNotBlank() && newPassword.length < 6
-                    )
-
-                    if (newPassword.isNotBlank() && newPassword.length < 6) {
-                        Text(
-                            text = "Password minimal 6 karakter",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.align(Alignment.Start)
+                    // 🔹 PERBAIKAN: New Password Field dengan Validasi Strength
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = newPassword,
+                            onValueChange = {
+                                newPassword = it
+                                if (it.isNotEmpty()) showPasswordRequirements = true
+                            },
+                            label = { Text("Password Baru") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = "New Password")
+                            },
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isLoading,
+                            isError = newPassword.isNotBlank() && (
+                                    newPassword.length < 6 ||
+                                            !PasswordValidator.isPasswordStrong(newPassword)
+                                    )
                         )
+
+                        // 🔹 TAMBAHKAN: Password Strength Indicator
+                        if (newPassword.isNotBlank()) {
+                            val strength = PasswordValidator.getPasswordStrength(newPassword)
+                            val strengthColor = PasswordValidator.getStrengthColor(strength)
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Kekuatan password: $strength",
+                                    color = strengthColor,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                // Progress bar sederhana
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp)
+                                        .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                                ) {
+                                    val progress = when (strength) {
+                                        "Kuat" -> 1f
+                                        "Sedang" -> 0.66f
+                                        else -> 0.33f
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(progress)
+                                            .height(4.dp)
+                                            .background(strengthColor, RoundedCornerShape(2.dp))
+                                    )
+                                }
+                            }
+                        }
+
+                        // Validasi panjang password
+                        if (newPassword.isNotBlank() && newPassword.length < 6) {
+                            Text(
+                                text = "Password minimal 6 karakter",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.align(Alignment.Start)
+                            )
+                        }
+
+                        // Validasi strength password
+                        if (newPassword.isNotBlank() && newPassword.length >= 6 &&
+                            !PasswordValidator.isPasswordStrong(newPassword)) {
+                            Text(
+                                text = "Password harus mengandung huruf besar, kecil, dan angka",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.align(Alignment.Start)
+                            )
+                        }
+                    }
+
+                    // 🔹 TAMBAHKAN: Password Requirements List
+                    if (showPasswordRequirements && newPassword.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Requirements:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                PasswordValidator.getPasswordRequirements(newPassword).forEach { (requirement, met) ->
+                                    Text(
+                                        text = "• $requirement",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (met) Color(0xFF388E3C) else Color(0xFF757575),
+                                        modifier = Modifier.padding(vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -234,6 +321,9 @@ fun ChangePasswordScreen(
                                 newPassword.length < 6 -> {
                                     viewModel.setErrorMessage("Password baru minimal 6 karakter")
                                 }
+                                !PasswordValidator.isPasswordStrong(newPassword) -> {
+                                    viewModel.setErrorMessage("Password harus mengandung huruf besar, kecil, dan angka")
+                                }
                                 newPassword != confirmPassword -> {
                                     viewModel.setErrorMessage("Password baru tidak cocok")
                                 }
@@ -264,6 +354,7 @@ fun ChangePasswordScreen(
                                 newPassword.isNotBlank() &&
                                 confirmPassword.isNotBlank() &&
                                 newPassword.length >= 6 &&
+                                PasswordValidator.isPasswordStrong(newPassword) && // 🔹 TAMBAHKAN validasi strength
                                 newPassword == confirmPassword
                     ) {
                         if (isLoading) {

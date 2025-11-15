@@ -123,7 +123,7 @@ fun ResetPasswordDialog(
                     CircularProgressIndicator(
                         modifier = Modifier
                             .padding(4.dp)
-                            .height(16.dp)
+                            .height(8.dp)
                     )
                 } else {
                     Text("Kirim Tautan")

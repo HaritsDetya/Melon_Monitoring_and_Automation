@@ -39,14 +39,21 @@ fun SplashScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
+    // 🔹 FIX: Enhanced auth handling dengan delay yang lebih baik
     LaunchedEffect(authState, currentUser, isLoading) {
-        // Tunggu 2 detik untuk splash screen dan auth check
-        delay(2000)
-
         println("🔹 [SPLASH] Auth Check:")
         println("🔹   - Auth Success: $authState")
         println("🔹   - Current User: ${currentUser?.email}")
         println("🔹   - Loading: $isLoading")
+
+        // Tunggu minimal 1.5 detik untuk splash screen dan pastikan auth check selesai
+        delay(1500)
+
+        // Jika masih loading, tunggu sampai selesai
+        if (isLoading) {
+            println("🔹 [SPLASH] Still loading, waiting...")
+            delay(1000)
+        }
 
         when {
             // User sudah login - langsung ke main app
@@ -59,12 +66,20 @@ fun SplashScreen(
             // User belum login - ke login screen
             else -> {
                 println("🔹 [SPLASH] ❌ User not authenticated, going to login")
+                // Beri delay sedikit untuk smooth transition
+                delay(500)
                 navController.navigate("auth_graph") {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             }
         }
     }
+
+    // 🔹 FIX: Force auth check ketika splash screen dimulai
+//    LaunchedEffect(Unit) {
+//        println("🔹 [SPLASH] Splash screen started - forcing auth check")
+//        viewModel.forceAuthCheck()
+//    }
 
     Box(
         modifier = Modifier

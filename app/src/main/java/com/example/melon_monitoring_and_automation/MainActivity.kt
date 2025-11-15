@@ -1,6 +1,5 @@
 package com.example.melon_monitoring_and_automation
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,8 +11,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.melon_monitoring_and_automation.ui.theme.HydroponicAppTheme
 import dagger.hilt.android.AndroidEntryPoint
-import java.net.URLDecoder
-import androidx.core.content.edit
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -21,13 +18,23 @@ class MainActivity : ComponentActivity() {
     // 🔹 FIX: Gunakan property instance, bukan companion object untuk deep link state
     private var pendingDeepLink: Uri? = null
     private var deepLinkProcessed = false
+    private var deepLinkListener: () -> Unit = {}
 
-    companion object {
-        const val DEEP_LINK_PROCESSED = "deep_link_processed"
+    // 🔹 FIX: Tambahkan flag untuk track jika app baru saja di-start
+    private var isFirstCreate = true
+
+    fun setDeepLinkListener(listener: () -> Unit) {
+        deepLinkListener = listener
+    }
+
+    fun clearDeepLinkListener() { // 🔹 Method khusus untuk clear
+        deepLinkListener = {}
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        println("🔹 [MAIN ACTIVITY] onCreate - First create: $isFirstCreate")
 
         // Handle deep link untuk reset password
         handleIntent(intent)
@@ -44,10 +51,40 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        println("🔹 [MAIN ACTIVITY] onResume")
+
+        // 🔹 FIX: Jika ini pertama kali create, beri tanda bahwa app baru di-start
+        if (isFirstCreate) {
+            isFirstCreate = false
+            println("🔹 [MAIN ACTIVITY] App freshly started, auth should be checked")
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         println("🔹 [MAIN ACTIVITY] New intent received: ${intent.action}")
         handleIntent(intent)
+        deepLinkListener()
+    }
+
+    // 🔹 PERBAIKAN: Method untuk consume deep link (ambil sekali pakai)
+    fun consumePendingDeepLink(): Uri? {
+        return if (!deepLinkProcessed && pendingDeepLink != null) {
+            val deepLink = pendingDeepLink
+            pendingDeepLink = null
+            deepLinkProcessed = true
+
+            // 🔹 DEBUG: Log detail deep link
+            println("🔹 [MAIN ACTIVITY] ✅ CONSUMED deep link: $deepLink")
+            println("🔹 [MAIN ACTIVITY] Fragment: ${deepLink?.fragment?.take(100)}...")
+
+            deepLink
+        } else {
+            println("🔹 [MAIN ACTIVITY] ❌ No deep link to consume")
+            null
+        }
     }
 
     private fun handleIntent(intent: Intent) {
@@ -57,25 +94,19 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> {
                 val deepLinkUri = intent.data
                 if (deepLinkUri != null) {
-                    println("🔹 [MAIN ACTIVITY] Deep link received: $deepLinkUri")
+                    println("🔹 [MAIN ACTIVITY] 🎯 DEEP LINK RECEIVED: $deepLinkUri")
 
                     // 🔹 PERBAIKAN: Reset state untuk deep link baru
                     pendingDeepLink = deepLinkUri
-                    deepLinkProcessed = false
+                    deepLinkProcessed = false // 🔹 RESET ke false untuk deep link baru
 
-                    // Log detail deep link
-                    println("🔹 [MAIN ACTIVITY] Scheme: ${deepLinkUri.scheme}")
-                    println("🔹 [MAIN ACTIVITY] Host: ${deepLinkUri.host}")
-                    println("🔹 [MAIN ACTIVITY] Path: ${deepLinkUri.path}")
-                    println("🔹 [MAIN ACTIVITY] Fragment: ${deepLinkUri.fragment?.take(50)}...")
-
-                    // Handle deep link
-                    handleDeepLink(intent)
+                    println("🔹 [MAIN ACTIVITY] Deep link state RESET - processed: $deepLinkProcessed")
                 }
             }
         }
     }
 
+    // 🔹 PERBAIKAN: Jangan otomatis mark processed di handleDeepLink
     private fun handleDeepLink(intent: Intent) {
         val data = intent.data
         if (data != null) {
@@ -84,46 +115,22 @@ class MainActivity : ComponentActivity() {
 
             if (data.toString().contains("supabase.com")) {
                 println("🔹 [DEEP LINK] Supabase deep link detected")
-
-                val fragment = data.fragment
-                // Simpan deep link, biarkan MainApp yang handle navigation
                 pendingDeepLink = data
-                deepLinkProcessed = false
-
-                println("🔹 [DEEP LINK] Deep link saved for MainApp processing")
+                deepLinkProcessed = false // 🔹 JANGAN langsung mark processed!
+                println("🔹 [DEEP LINK] Deep link saved for consumption")
             }
         }
     }
 
-    // 🔹 NEW: Function untuk cek apakah perlu show reset error
-    fun shouldShowResetError(): Boolean {
-        val sharedPref = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return sharedPref.getBoolean("should_show_reset_error", false).also {
-            if (it) {
-                sharedPref.edit().putBoolean("should_show_reset_error", false).apply()
-            }
-        }
-    }
-
-    // Function untuk diakses dari Composable
     fun getPendingDeepLinkInstance(): Uri? {
+        val hasDeepLink = !deepLinkProcessed && pendingDeepLink != null
+        println("🔹 [MAIN ACTIVITY] 📋 Get pending deep link: $hasDeepLink")
         return if (!deepLinkProcessed) pendingDeepLink else null
     }
 
     fun markDeepLinkProcessed() {
         deepLinkProcessed = true
         pendingDeepLink = null
-        println("🔹 [MAIN ACTIVITY] Deep link marked as processed")
-    }
-
-    // Function untuk mendapatkan error deep link
-    fun getDeepLinkError(): String? {
-        val sharedPref = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return sharedPref.getString("deep_link_error", null).also {
-            if (it != null) {
-                // Clear error setelah diambil
-                sharedPref.edit() { remove("deep_link_error") }
-            }
-        }
+        println("🔹 [MAIN ACTIVITY] 🏁 Deep link MARKED AS PROCESSED")
     }
 }

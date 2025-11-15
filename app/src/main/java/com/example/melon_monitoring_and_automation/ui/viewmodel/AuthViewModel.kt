@@ -23,6 +23,7 @@ import java.net.URL
 import androidx.core.content.edit
 import com.example.melon_monitoring_and_automation.MainActivity
 import com.example.melon_monitoring_and_automation.data.network.NetworkResult
+import com.example.melon_monitoring_and_automation.ui.components.PasswordValidator
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
@@ -110,15 +111,23 @@ class AuthViewModel @Inject constructor(
         println("🔹 [AUTH] Auto-check enabled")
     }
 
-    // ✅ Register user baru - ENHANCED VERSION
     fun register(username: String, email: String, password: String, phoneNumber: String) {
         _isLoading.value = true
         _errorMessage.value = null
-        _authSuccess.value = false // Reset success state
+        _authSuccess.value = false
 
         viewModelScope.launch {
             try {
                 println("🔹 [AUTH] Starting registration for: $email")
+
+                // 🔹 TAMBAHKAN: Validasi password strength sebelum register
+                if (password.length < 6) {
+                    throw Exception("Password minimal 6 karakter")
+                }
+
+                if (!PasswordValidator.isPasswordStrong(password)) {
+                    throw Exception("Password harus mengandung huruf besar, kecil, dan angka")
+                }
 
                 val result = repository.signUpWithEmail(username, email, password, phoneNumber)
 
@@ -129,9 +138,6 @@ class AuthViewModel @Inject constructor(
                     _currentUser.value = user
                     _authSuccess.value = true
                     _errorMessage.value = null
-
-                    // Clear form data after successful registration
-                    // This will trigger navigation in RegisterScreen
 
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Registrasi gagal"
@@ -264,8 +270,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Di AuthViewModel.kt - perbaiki updatePasswordWithToken
-    fun updatePasswordWithToken(newPassword: String, accessToken: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    // Di AuthViewModel.kt - PERBAIKI fungsi updatePasswordWithToken
+    fun updatePasswordWithToken(
+        newPassword: String,
+        accessToken: String,
+        context: Context, // 🔹 TAMBAHKAN parameter context
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
@@ -274,58 +286,131 @@ class AuthViewModel @Inject constructor(
 
                 println("🔹 [AUTH] Starting password update process...")
                 println("🔹 [AUTH] Token: ${accessToken.take(20)}...")
+                println("🔹 [AUTH] New Password: ${newPassword.take(3)}...") // Jangan log full password
 
-                // 🔹 FIX: Coba verifikasi token dulu sebelum update password
-                val isTokenValid = verifyTokenValidity(accessToken)
-                if (!isTokenValid) {
-                    _isLoading.value = false
-                    onError("Token reset password sudah kadaluarsa. Silakan request link baru.")
-                    return@launch
+                // 🔹 FIX: Validasi password sebelum kirim ke server
+                if (newPassword.length < 6) {
+                    throw Exception("Password minimal 6 karakter")
                 }
 
-                // Coba OkHttp
-                println("🔹 [AUTH] 🔄 Trying method 1: OkHttp")
-                var result = updatePasswordViaOkHttp(newPassword, accessToken)
-
-                if (!result) {
-                    // Fallback ke HttpURLConnection
-                    println("🔹 [AUTH] 🔄 Trying method 2: HttpURLConnection")
-                    result = updatePasswordViaHttpURLConnection(newPassword, accessToken)
+                if (!isPasswordStrong(newPassword)) {
+                    throw Exception("Password harus mengandung huruf besar, kecil, dan angka")
                 }
+
+                // 🔹 FIX: Gunakan method yang sudah diperbaiki
+                val result = updatePasswordViaSupabase(newPassword, accessToken)
 
                 if (result) {
                     _isLoading.value = false
                     _resetPasswordSuccess.value = true
                     _authSuccess.value = true
                     println("🔹 [AUTH] ✅ Password updated successfully")
+
+                    // 🔹 Clear token setelah berhasil digunakan
+                    clearRecoveryTokens(context)
                     onSuccess()
                 } else {
-                    _isLoading.value = false
-                    onError("""
-                    Gagal mereset password.
-                    
-                    Kemungkinan penyebab:
-                    • Token sudah kadaluarsa
-                    • Link reset sudah digunakan
-                    • Masalah koneksi server
-                    
-                    Silakan request link reset baru.
-                """.trimIndent())
+                    throw Exception("Gagal mengupdate password")
                 }
 
             } catch (e: Exception) {
                 _isLoading.value = false
                 println("🔹 [AUTH] ❌ Password update process failed: ${e.message}")
 
-                val errorMessage = when {
-                    e.message?.contains("expired") == true -> "Token sudah kadaluarsa. Request link baru."
-                    e.message?.contains("403") == true -> "Token tidak valid. Request link baru."
-                    e.message?.contains("Unable to resolve host") == true -> "Tidak dapat terhubung ke server."
-                    else -> "Gagal mereset password: ${e.message ?: "Unknown error"}"
-                }
-
+                val errorMessage = handlePasswordUpdateError(e.message ?: "")
+                _errorMessage.value = errorMessage
                 onError(errorMessage)
             }
+        }
+    }
+
+    // 🔹 TAMBAHKAN: Fungsi validasi password strength
+    private fun isPasswordStrong(password: String): Boolean {
+        if (password.length < 6) return false
+
+        val hasUpperCase = password.any { it.isUpperCase() }
+        val hasLowerCase = password.any { it.isLowerCase() }
+        val hasDigits = password.any { it.isDigit() }
+
+        // Minimal requirement: huruf besar, kecil, dan angka
+        return hasUpperCase && hasLowerCase && hasDigits
+    }
+
+    private suspend fun updatePasswordViaSupabase(newPassword: String, accessToken: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [AUTH] === USING SUPABASE AUTH API FOR PASSWORD UPDATE ===")
+
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+
+                val requestBody = """
+            {
+                "password": "$newPassword"
+            }
+            """.trimIndent().toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url("$SUPABASE_URL/auth/v1/user")
+                    .put(requestBody)
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("apikey", ANON_KEY)
+                    .addHeader("Prefer", "return=minimal")
+                    .build()
+
+                println("🔹 [AUTH] Sending password update request...")
+
+                client.newCall(request).execute().use { response ->
+                    val responseCode = response.code
+                    val responseBody = response.body?.string() ?: "No response body"
+
+                    println("🔹 [AUTH] Password Update Response Code: $responseCode")
+                    println("🔹 [AUTH] Password Update Response Body: $responseBody")
+
+                    when (responseCode) {
+                        200 -> {
+                            println("🔹 [AUTH] ✅ SUCCESS: Password updated via Auth API")
+                            true
+                        }
+                        400 -> {
+                            println("🔹 [AUTH] ❌ ERROR 400: Bad Request - $responseBody")
+                            throw Exception("Bad request: $responseBody")
+                        }
+                        401 -> {
+                            println("🔹 [AUTH] ❌ ERROR 401: Unauthorized - Invalid token")
+                            throw Exception("Token tidak valid")
+                        }
+                        422 -> {
+                            println("🔹 [AUTH] ❌ ERROR 422: Unprocessable Entity - $responseBody")
+                            throw Exception(parsePasswordError(responseBody))
+                        }
+                        else -> {
+                            println("🔹 [AUTH] ❌ ERROR $responseCode: $responseBody")
+                            throw Exception("Server error: $responseCode")
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                println("🔹 [AUTH] ❌ Supabase Auth API Exception: ${e.message}")
+                throw e // Re-throw exception untuk ditangani di caller
+            }
+        }
+    }
+
+    // 🔹 TAMBAHKAN: Fungsi untuk parse error message
+    private fun parsePasswordError(responseBody: String): String {
+        return when {
+            responseBody.contains("same_password", ignoreCase = true) ->
+                "same_password"
+            responseBody.contains("password_length", ignoreCase = true) ->
+                "password_length"
+            responseBody.contains("weak_password", ignoreCase = true) ->
+                "weak_password"
+            else -> responseBody
         }
     }
 
@@ -436,12 +521,13 @@ class AuthViewModel @Inject constructor(
     fun processPasswordResetDeepLink(context: Context, uriString: String, onTokenExtracted: (String?) -> Unit) {
         viewModelScope.launch {
             try {
-                println("🔹 [AUTH] Processing deep link: $uriString")
+                println("🔹 [AUTH] 🔄 START: Processing deep link")
+                println("🔹 [AUTH] URI: $uriString")
 
                 val uri = uriString.toUri()
                 val fragment = uri.fragment
+                println("🔹 [AUTH] Fragment: ${fragment?.take(50)}...")
 
-                // 🔹 PERBAIKAN: Improved error detection
                 if (fragment == null) {
                     println("🔹 [AUTH] ❌ No fragment in deep link")
                     _errorMessage.value = "Link reset password tidak valid."
@@ -450,59 +536,71 @@ class AuthViewModel @Inject constructor(
                 }
 
                 if (fragment.contains("error")) {
-                    println("🔹 [AUTH] ❌ Error deep link detected: $fragment")
+                    println("🔹 [AUTH] ❌ Error deep link detected")
                     val errorMessage = parseDeepLinkError(fragment)
                     _errorMessage.value = errorMessage
                     onTokenExtracted(null)
                     return@launch
                 }
 
-                // Extract token
+                // Extract token dengan improved parsing
                 val accessToken = extractTokenFromFragment(fragment)
+                println("🔹 [AUTH] Extracted token: ${accessToken?.take(20)}...")
 
                 if (accessToken != null) {
-                    println("🔹 [AUTH] ✅ Access token extracted: ${accessToken.take(20)}...")
+                    println("🔹 [AUTH] ✅ Access token extracted successfully")
 
-                    // Verifikasi token
-                    println("🔹 [AUTH] Verifying token validity...")
-                    val isValid = withTimeout(10000) {
-                        verifyTokenValidity(accessToken)
-                    }
+                    // 🔹 PERBAIKAN: Simpan token dulu, verifikasi nanti saat update
+                    saveAccessToken(context, accessToken)
+                    _deepLinkProcessed.value = true
+                    _errorMessage.value = null
+                    onTokenExtracted(accessToken)
 
-                    if (isValid) {
-                        saveAccessToken(context, accessToken)
-                        _deepLinkProcessed.value = true
-                        _errorMessage.value = null
-                        println("🔹 [AUTH] ✅ Token valid, deep link processed successfully")
-                        onTokenExtracted(accessToken)
-                    } else {
-                        println("🔹 [AUTH] ❌ Token verification failed - token expired")
-                        _errorMessage.value = "Link reset password sudah kadaluarsa. Silakan request link baru."
-                        onTokenExtracted(null)
-                    }
+                    println("🔹 [AUTH] ✅ Token saved for password update")
                 } else {
-                    println("🔹 [AUTH] ❌ No access token found in deep link")
-                    _errorMessage.value = "Tidak dapat mengekstrak token dari link. Pastikan link valid."
+                    println("🔹 [AUTH] ❌ No access token found")
+                    _errorMessage.value = "Tidak dapat mengekstrak token dari link."
                     onTokenExtracted(null)
                 }
 
-            } catch (e: TimeoutCancellationException) {
-                println("🔹 [AUTH] ❌ Token verification timeout: ${e.message}")
-                _errorMessage.value = "Timeout saat memverifikasi token. Silakan coba lagi."
-                onTokenExtracted(null)
             } catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Error processing deep link: ${e.message}")
                 _errorMessage.value = "Error memproses link: ${e.message}"
                 onTokenExtracted(null)
+            } finally {
+                println("🔹 [AUTH] ✅ FINISH: Deep link processing completed")
             }
         }
     }
 
     // 🔹 IMPROVED: Better token extraction
     private fun extractTokenFromFragment(fragment: String?): String? {
-        if (fragment == null) return null
+        if (fragment == null) {
+            println("🔹 [AUTH] ❌ Fragment is null")
+            return null
+        }
 
-        return fragment.split("&").find { it.startsWith("access_token=") }?.substringAfter("access_token=")
+        println("🔹 [AUTH] Extracting token from fragment: ${fragment.take(100)}...")
+
+        // Coba beberapa pattern extraction
+        val patterns = listOf(
+            "access_token=([^&]+)",
+            "token=([^&]+)",
+            "#access_token=([^&]+)"
+        )
+
+        for (pattern in patterns) {
+            val regex = pattern.toRegex()
+            val match = regex.find(fragment)
+            if (match != null) {
+                val token = match.groupValues[1]
+                println("🔹 [AUTH] ✅ Token found using pattern: $pattern")
+                return token
+            }
+        }
+
+        println("🔹 [AUTH] ❌ No token pattern matched")
+        return null
     }
 
     // Di AuthViewModel.kt - perbaiki fungsi sendPasswordResetEmail
@@ -614,13 +712,6 @@ class AuthViewModel @Inject constructor(
         _resetPasswordSuccess.value = false
         _deepLinkProcessed.value = false
         println("🔹 [AUTH] Recovery tokens cleared")
-    }
-
-    // 🔹 TAMBAHKAN: Overload function tanpa parameter untuk kasus tertentu
-    fun clearRecoveryTokens() {
-        _resetPasswordSuccess.value = false
-        _deepLinkProcessed.value = false
-        println("🔹 [AUTH] Recovery tokens state cleared (no context)")
     }
 
     // 🔹 FIX: Simpan access token untuk digunakan nanti
@@ -845,12 +936,24 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 TAMBAHKAN: Fungsi helper untuk Composable
-    fun getDeepLinkErrorMessage(deepLinkUri: Uri?): String? {
-        val fragment = deepLinkUri?.fragment ?: return null
-        if (fragment.contains("error")) {
-            return parseDeepLinkError(fragment)
+    // 🔹 PERBAIKI: Fungsi handlePasswordUpdateError yang SEBENARNYA digunakan
+    private fun handlePasswordUpdateError(error: String): String {
+        return when {
+            error.contains("same_password", ignoreCase = true) ->
+                "Password baru harus berbeda dari password lama. Silakan gunakan password yang berbeda."
+            error.contains("password_length", ignoreCase = true) ->
+                "Password terlalu pendek. Minimal 6 karakter."
+            error.contains("weak_password", ignoreCase = true) ->
+                "Password terlalu lemah. Gunakan kombinasi huruf besar, kecil, dan angka."
+            error.contains("expired", ignoreCase = true) ->
+                "Token sudah kadaluarsa. Silakan request link baru."
+            error.contains("401") == true ->
+                "Token tidak valid. Silakan request link baru."
+            error.contains("422") == true ->
+                "Password tidak memenuhi requirement."
+            error.contains("Unable to resolve host") == true ->
+                "Tidak dapat terhubung ke server. Periksa koneksi internet."
+            else -> "Gagal mereset password: $error"
         }
-        return null
     }
 }
