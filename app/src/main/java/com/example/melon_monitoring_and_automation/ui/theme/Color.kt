@@ -23,3 +23,4 @@ val Thrid = Color(0xFF06A9C0)
 val Four = Color(0xFF95FF75)
 val TextUtama = Color(0xFFF0F4F8)
 val Five = Color(0xFF05B161)
+

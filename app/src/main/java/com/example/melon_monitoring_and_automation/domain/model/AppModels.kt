@@ -186,3 +186,51 @@ data class MonthYear(
             return "${monthNames[monthValue - 1]} $year"
         }
 }
+
+@Serializable
+data class IoTDevice(
+    val id: String,
+    val deviceId: String,
+    val serialNumber: String,
+    val deviceName: String,
+    val deviceType: DeviceType = DeviceType.HYDROPONIC_SENSOR,
+    val greenhouseId: String? = null,
+    val pairingCode: String,
+    val isPaired: Boolean = false,
+    val pairedAt: String? = null,
+    val createdAt: String,
+    val lastSeen: String? = null,
+    val firmwareVersion: String? = null,
+    val batteryLevel: Int? = null,
+    val signalStrength: Int? = null,
+    val onlineStatus: Boolean = true
+)
+
+@Serializable
+enum class DeviceType {
+    HYDROPONIC_SENSOR,
+    TEMPERATURE_SENSOR,
+    HUMIDITY_SENSOR,
+    PH_SENSOR,
+    TDS_SENSOR,
+    WATER_TEMP_SENSOR,
+    CONTROLLER_DEVICE
+}
+
+@Serializable
+data class DeviceTelemetry(
+    val id: String,
+    val deviceId: String,
+    val batteryLevel: Int?,
+    val signalStrength: Int?,
+    val onlineStatus: Boolean = true,
+    val reportedAt: String
+)
+
+@Serializable
+data class DeviceQRCode(
+    val deviceId: String,
+    val serialNumber: String,
+    val pairingCode: String,
+    val deviceType: DeviceType = DeviceType.HYDROPONIC_SENSOR
+)

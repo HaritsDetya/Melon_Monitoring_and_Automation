@@ -11,5 +11,14 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object Control : Screen("control")
     object Profile : Screen("profile")
-    object GreenhouseDetail : Screen("greenhouse_detail") // Outside bottom nav
+
+    // Additional Screens - Outside bottom nav
+    object GreenhouseDetail : Screen("greenhouse_detail")
+    object ChangePassword : Screen("change_password")
+
+    // 🔹 NEW: IoT Device Pairing Screens
+    object DeviceSetupGuide : Screen("device_setup_guide")
+    object DevicePairing : Screen("device_pairing")
+    object QRScanner : Screen("qr_scanner")
+    object DeviceList : Screen("device_list")
 }

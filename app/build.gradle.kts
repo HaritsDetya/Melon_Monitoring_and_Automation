@@ -117,4 +117,18 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+// QR Scanner dengan ML Kit
+    implementation ("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // CameraX
+    implementation ("androidx.camera:camera-core:1.3.0")
+    implementation ("androidx.camera:camera-camera2:1.3.0")
+    implementation ("androidx.camera:camera-lifecycle:1.3.0")
+    implementation ("androidx.camera:camera-view:1.3.0")
+
+    implementation ("androidx.compose.material:material-icons-extended:1.5.4")
+
+    implementation ("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
+
 }

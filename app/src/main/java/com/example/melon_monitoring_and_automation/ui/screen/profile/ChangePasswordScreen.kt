@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.melon_monitoring_and_automation.SetSystemBars
 import com.example.melon_monitoring_and_automation.ui.components.PasswordValidator
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -61,6 +63,11 @@ fun ChangePasswordScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val changePasswordSuccess by viewModel.changePasswordSuccess.collectAsState()
+
+    val darkGreen = Color(0xFF2E7D32)
+
+    // Set status bar
+    SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
 
     // Reset state ketika screen pertama kali dibuka
     LaunchedEffect(Unit) {
@@ -83,11 +90,18 @@ fun ChangePasswordScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Ubah Password") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = darkGreen,
+                    titleContentColor = Color.White
+                ),
                 navigationIcon = {
                     IconButton(onClick = {
                         navController.popBackStack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White)
                     }
                 }
             )

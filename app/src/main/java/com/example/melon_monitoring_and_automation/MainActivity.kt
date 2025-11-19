@@ -2,13 +2,17 @@ package com.example.melon_monitoring_and_automation
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.example.melon_monitoring_and_automation.ui.theme.HydroponicAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,6 +43,8 @@ class MainActivity : ComponentActivity() {
         // Handle deep link untuk reset password
         handleIntent(intent)
 
+        setStatusBarColor()
+
         setContent {
             HydroponicAppTheme {
                 Surface(
@@ -48,6 +54,16 @@ class MainActivity : ComponentActivity() {
                     MainApp()
                 }
             }
+        }
+    }
+
+    private fun setStatusBarColor() {
+        // Hanya set warna dasar, biarkan Accompanist yang handle dynamic changes
+        window.statusBarColor = ContextCompat.getColor(this, R.color.status_bar_dark_green)
+
+        // Untuk edge-to-edge display
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
         }
     }
 

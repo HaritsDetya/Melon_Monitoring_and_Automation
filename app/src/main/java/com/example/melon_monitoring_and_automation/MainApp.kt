@@ -2,6 +2,7 @@ package com.example.melon_monitoring_and_automation
 
 import android.net.Uri
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,6 +16,10 @@ import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.ResetPasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.GreenhouseDetailScreen
+import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceListScreen
+import com.example.melon_monitoring_and_automation.ui.screen.pairing.DevicePairingScreen
+import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceSetupGuideScreen
+import com.example.melon_monitoring_and_automation.ui.screen.pairing.QRScannerScreen
 import com.example.melon_monitoring_and_automation.ui.screen.profile.ChangePasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.splash.SplashScreen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
@@ -31,26 +36,26 @@ fun MainApp() {
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by authViewModel.isLoading.collectAsStateWithLifecycle()
 
-    // 🔹 PERBAIKAN: State untuk track apakah sudah process deep link
     var hasProcessedDeepLink by remember { mutableStateOf(false) }
+
+    val darkGreen = Color(0xFF2E7D32)
+
+    // Set global status bar
+    SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
+
 
     // 🔹 FIX: Enhanced initial app startup dengan session restoration
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] 🚀 App starting...")
-
-        // Step 1: Enable auto-check dan check auth status
         authViewModel.enableAutoCheck()
-
-        // Step 2: Beri waktu untuk supabase client initialize dan auth check
         delay(2000)
-
         println("🔹 [MAIN APP] ✅ App initialization completed")
     }
 
     // 🔹 FIX: Enhanced deep link handling
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] 🚀 INITIAL DEEP LINK CHECK STARTED")
-        delay(1000) // Tunggu lebih lama untuk pastikan auth check selesai
+        delay(1000)
 
         val pendingDeepLink = activity?.getPendingDeepLinkInstance()
         println("🔹 [MAIN APP] 🔍 Initial deep link check: $pendingDeepLink")
@@ -72,12 +77,11 @@ fun MainApp() {
             val currentRoute = navController.currentBackStackEntry?.destination?.route
             println("🔹 [MAIN APP] Current Route: $currentRoute")
 
-            // Handle navigation based on auth state - hanya jika di splash atau auth flow
             if (currentRoute == Screen.Splash.route || currentRoute?.startsWith("auth") == true) {
                 when {
                     authSuccess && currentUser != null -> {
                         println("🔹 [MAIN APP] ✅ User authenticated, navigating to main app")
-                        delay(1000) // Beri waktu untuk smooth transition
+                        delay(1000)
                         navController.navigate("main_app_graph") {
                             popUpTo(0) { inclusive = true }
                         }
@@ -85,7 +89,6 @@ fun MainApp() {
                     else -> {
                         if (currentRoute == Screen.Splash.route) {
                             println("🔹 [MAIN APP] ❌ User not authenticated, staying in auth flow")
-                            // Biarkan SplashScreen yang handle navigation ke auth
                         }
                     }
                 }
@@ -108,14 +111,14 @@ fun MainApp() {
         activity?.setDeepLinkListener(listener)
 
         onDispose {
-            activity?.clearDeepLinkListener() // 🔹 Gunakan method clear
+            activity?.clearDeepLinkListener()
         }
     }
 
     // 🔹 FIX: Initial auth check yang lebih robust
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] Initializing app...")
-        delay(1000) // Beri waktu lebih untuk initialization
+        delay(1000)
         authViewModel.enableAutoCheck()
         authViewModel.checkAuthStatus()
     }
@@ -125,7 +128,7 @@ fun MainApp() {
         navController = navController,
         startDestination = Screen.Splash.route
     ) {
-        // Splash Screen - biarkan handle auth decision
+        // Splash Screen
         composable(Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
@@ -153,6 +156,8 @@ fun MainApp() {
             composable("main_tabs") {
                 MainAppScreen(navController = navController)
             }
+
+            // Greenhouse Detail
             composable("${Screen.GreenhouseDetail.route}/{greenhouseId}") { backStackEntry ->
                 val greenhouseId = backStackEntry.arguments?.getString("greenhouseId") ?: ""
                 GreenhouseDetailScreen(
@@ -160,9 +165,54 @@ fun MainApp() {
                     onBackClick = { navController.popBackStack() }
                 )
             }
-            // ✅ TAMBAHKAN INI - Route untuk Change Password
-            composable("change_password") {
+
+            // Change Password
+            composable(Screen.ChangePassword.route) {
                 ChangePasswordScreen(navController = navController)
+            }
+
+            composable(Screen.DeviceSetupGuide.route) {
+                DeviceSetupGuideScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onStartPairing = {
+                        navController.navigate(Screen.DevicePairing.route)
+                    }
+                )
+            }
+
+            composable(Screen.DevicePairing.route) {
+                DevicePairingScreen(
+                    navController = navController,
+                    onBackClick = { navController.popBackStack() },
+                    onDevicePaired = { greenhouseId ->
+                        navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId") {
+                            popUpTo(Screen.GreenhouseDetail.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.QRScanner.route) {
+                QRScannerScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onQRCodeScanned = { qrData ->
+                        // Process QR data dan kembali ke pairing screen dengan data
+                        navController.previousBackStackEntry?.savedStateHandle?.set(
+                            "scannedQRData", qrData
+                        )
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Screen.DeviceList.route) {
+                DeviceListScreen(
+                    navController = navController,
+                    onBackClick = { navController.popBackStack() },
+                    onAddDeviceClick = {
+                        navController.navigate(Screen.DeviceSetupGuide.route)
+                    }
+                )
             }
         }
     }
@@ -188,7 +238,6 @@ private fun processDeepLink(
         }
         fragment?.contains("error") == true -> {
             println("🔹 [MAIN APP] ❌ Error deep link")
-            // Untuk error, bisa langsung mark processed
             activity?.markDeepLinkProcessed()
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.Splash.route) { inclusive = true }

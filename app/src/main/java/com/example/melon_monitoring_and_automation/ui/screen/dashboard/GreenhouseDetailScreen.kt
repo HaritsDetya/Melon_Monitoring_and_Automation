@@ -17,21 +17,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.melon_monitoring_and_automation.SetSystemBars
 import com.example.melon_monitoring_and_automation.domain.model.ChartDataPoint
 import com.example.melon_monitoring_and_automation.domain.model.ChartType
 import com.example.melon_monitoring_and_automation.domain.model.DateRange
@@ -63,6 +68,11 @@ fun GreenhouseDetailScreen(
     val greenhouse by viewModel.getGreenhouseById(greenhouseId).collectAsState(initial = null)
     val sensorReadings by viewModel.getLatestSensorReadings(greenhouseId).collectAsState(initial = null)
 
+    val darkGreen = Color(0xFF2E7D32)
+
+    // Set status bar
+    SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,7 +81,11 @@ fun GreenhouseDetailScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = darkGreen,
+                    titleContentColor = Color.White
+                )
             )
         }
     ) { padding ->

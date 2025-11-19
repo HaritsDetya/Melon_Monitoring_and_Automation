@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 🔹 TAMBAHKAN WARNA STATUS BAR -->
+    <color name="status_bar_dark_green">#FF2E7D32</color>
+    <color name="status_bar_darker_green">#FF1B5E20</color>
 </resources>

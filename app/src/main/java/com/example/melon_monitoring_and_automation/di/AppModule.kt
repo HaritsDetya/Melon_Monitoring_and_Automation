@@ -6,6 +6,7 @@ import com.example.melon_monitoring_and_automation.data.local.AppDatabase
 import com.example.melon_monitoring_and_automation.data.local.LocalRepository
 import com.example.melon_monitoring_and_automation.data.network.SupabaseManager
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
+import com.example.melon_monitoring_and_automation.data.repository.IoTDeviceRepository
 import com.example.melon_monitoring_and_automation.domain.usecase.DataUseCase
 import dagger.Module
 import dagger.Provides
@@ -42,6 +43,14 @@ object AppModule {
         @ApplicationContext context: Context
     ): HydroponicRepository {
         return HydroponicRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideIoTDeviceRepository(
+        @ApplicationContext context: Context
+    ): IoTDeviceRepository {
+        return IoTDeviceRepository(context)
     }
 
     @Provides

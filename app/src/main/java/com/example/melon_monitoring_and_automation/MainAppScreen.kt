@@ -73,15 +73,10 @@ fun MainAppScreen(
                         selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
                         onClick = {
                             innerNavController.navigate(item.route) {
-                                // Pop up to the start destination of the graph to
-                                // avoid building up a large stack of destinations
                                 popUpTo(innerNavController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
-                                // Avoid multiple copies of the same destination when
-                                // re-selecting the same item
                                 launchSingleTop = true
-                                // Restore state when re-selecting a previously selected item
                                 restoreState = true
                             }
                         }
@@ -90,7 +85,6 @@ fun MainAppScreen(
             }
         }
     ) { innerPadding ->
-        // Nested NavHost untuk bottom navigation screens
         NavHost(
             navController = innerNavController,
             startDestination = Screen.Dashboard.route,
@@ -100,15 +94,19 @@ fun MainAppScreen(
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
                     onGreenhouseClick = { greenhouseId ->
-                        // Navigate to greenhouse detail using parent navController
                         navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId")
                     }
                 )
             }
 
-            // Control Screen
+            // 🔹 UPDATED: Control Screen dengan Device Management
             composable(Screen.Control.route) {
-                ControlScreen()
+                ControlScreen(
+                    onManageDevicesClick = {
+                        // Navigate to device list menggunakan parent navController
+                        navController.navigate(Screen.DeviceList.route)
+                    }
+                )
             }
 
             // Profile Screen

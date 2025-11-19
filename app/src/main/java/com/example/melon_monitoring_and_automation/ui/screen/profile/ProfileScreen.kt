@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.melon_monitoring_and_automation.SetSystemBars
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
 import com.example.melon_monitoring_and_automation.domain.model.User
 import com.example.melon_monitoring_and_automation.ui.navigation.Screen
@@ -67,6 +69,11 @@ fun ProfileScreen(
 
     var showDeleteError by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf("") }
+
+    val darkGreen = Color(0xFF2E7D32)
+
+    // Set status bar
+    SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
 
     // 🔹 FIX: Load user data dan greenhouse data saat screen dibuka
     LaunchedEffect(Unit) {
@@ -142,7 +149,13 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Profile") })
+            TopAppBar(
+                title = { Text("Profile") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = darkGreen,
+                    titleContentColor = Color.White
+                )
+            )
         }
     ) { padding ->
         Column(
