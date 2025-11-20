@@ -7,8 +7,6 @@ import com.example.melon_monitoring_and_automation.domain.model.SensorReadings
 import com.example.melon_monitoring_and_automation.domain.model.SensorHistory
 import com.example.melon_monitoring_and_automation.domain.model.SensorType
 import com.example.melon_monitoring_and_automation.domain.model.User
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 class LocalRepository(
     private val db: AppDatabase

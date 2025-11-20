@@ -75,12 +75,6 @@ fun SplashScreen(
         }
     }
 
-    // 🔹 FIX: Force auth check ketika splash screen dimulai
-//    LaunchedEffect(Unit) {
-//        println("🔹 [SPLASH] Splash screen started - forcing auth check")
-//        viewModel.forceAuthCheck()
-//    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
