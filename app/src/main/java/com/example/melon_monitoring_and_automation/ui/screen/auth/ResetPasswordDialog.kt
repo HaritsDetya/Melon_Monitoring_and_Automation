@@ -1,3 +1,25 @@
+/**
+ * RESET PASSWORD DIALOG COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan dialog untuk meminta email reset password
+ * - Mengirim email reset password ke alamat yang dimasukkan user
+ * - Memberikan feedback status pengiriman email (success/error)
+ * - Auto-close dialog ketika email berhasil dikirim
+ *
+ * Fitur:
+ * - Email input validation
+ * - Loading state selama proses pengiriman
+ * - Error handling dengan user-friendly messages
+ * - Auto-dismiss pada success
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param onDismiss Callback ketika dialog ditutup
+ * @param onSend Callback ketika email berhasil dikirim
+ * @param viewModel ViewModel untuk handle business logic
+ */
+
 package com.example.melon_monitoring_and_automation.ui.screen.auth
 
 import androidx.compose.foundation.layout.Column
@@ -32,15 +54,17 @@ fun ResetPasswordDialog(
     onSend: (String) -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    // LOCAL STATE - Email input dari user
     var emailInput by remember { mutableStateOf("") }
+
+    // VIEWMODEL STATE - Collect state dari AuthViewModel
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val passwordResetSent by viewModel.passwordResetSent.collectAsState()
 
-    // 🔹 TAMBAHKAN: Dapatkan context
     val context = LocalContext.current
 
-    // Auto-close dialog ketika reset password berhasil dikirim
+    // AUTO-CLOSE HANDLER - Tutup dialog otomatis ketika email terkirim
     LaunchedEffect(passwordResetSent) {
         if (passwordResetSent) {
             onDismiss()
@@ -48,6 +72,7 @@ fun ResetPasswordDialog(
         }
     }
 
+    // DIALOG UI - Material3 AlertDialog
     AlertDialog(
         onDismissRequest = {
             onDismiss()
@@ -61,6 +86,7 @@ fun ResetPasswordDialog(
         },
         text = {
             Column {
+                // INSTRUCTION TEXT - Petunjuk untuk user
                 Text(
                     "Masukkan alamat email yang terdaftar. Kami akan mengirimkan tautan untuk mereset kata sandi Anda.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -69,6 +95,7 @@ fun ResetPasswordDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // EMAIL INPUT FIELD
                 OutlinedTextField(
                     value = emailInput,
                     onValueChange = { emailInput = it },
@@ -86,9 +113,10 @@ fun ResetPasswordDialog(
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = !errorMessage.isNullOrEmpty()
+                    isError = !errorMessage.isNullOrEmpty() // Tampilkan error state
                 )
 
+                // ERROR MESSAGE DISPLAY
                 if (!errorMessage.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -99,6 +127,7 @@ fun ResetPasswordDialog(
                     )
                 }
 
+                // SUCCESS MESSAGE DISPLAY
                 if (passwordResetSent) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -110,16 +139,17 @@ fun ResetPasswordDialog(
             }
         },
         confirmButton = {
+            // SEND BUTTON - Kirim email reset
             Button(
                 onClick = {
                     viewModel.clearErrorMessage()
-                    // 🔹 PERBAIKAN: Gunakan fungsi dengan context
                     viewModel.sendPasswordResetEmail(emailInput, context)
                 },
                 enabled = emailInput.isNotBlank() && !isLoading && !passwordResetSent,
                 modifier = Modifier.padding(end = 8.dp)
             ) {
                 if (isLoading) {
+                    // LOADING INDICATOR - Tampilkan selama proses
                     CircularProgressIndicator(
                         modifier = Modifier
                             .padding(4.dp)
@@ -131,6 +161,7 @@ fun ResetPasswordDialog(
             }
         },
         dismissButton = {
+            // CANCEL BUTTON - Tutup dialog
             TextButton(
                 onClick = {
                     onDismiss()

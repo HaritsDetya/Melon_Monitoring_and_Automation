@@ -3,12 +3,12 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">supabase.co</domain>
         <domain includeSubdomains="true">aniututpufnxevcdxiio.supabase.co</domain>
-        <domain includeSubdomains="true">aniuutpufnxevcdxiio.supabase.co</domain>
     </domain-config>
-    <base-config cleartextTrafficPermitted="true">
+
+    <debug-overrides>
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
         </trust-anchors>
-    </base-config>
+    </debug-overrides>
 </network-security-config>

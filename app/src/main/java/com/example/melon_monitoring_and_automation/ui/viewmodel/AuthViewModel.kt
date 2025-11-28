@@ -1,8 +1,36 @@
+/**
+ * AUTH VIEWMODEL
+ *
+ * Tujuan:
+ * - Menangani semua business logic terkait autentikasi user
+ * - Mengelola state autentikasi (login, register, logout, reset password)
+ * - Berkomunikasi dengan Supabase Auth dan local repository
+ * - Memproses deep links untuk reset password flow
+ * - Menyediakan state management untuk UI composables
+ *
+ * Architecture:
+ * - Menggunakan Hilt untuk dependency injection
+ * - State management dengan MutableStateFlow dan StateFlow
+ * - Coroutines untuk async operations
+ * - Repository pattern untuk data abstraction
+ *
+ * Key Features:
+ * - Email/password authentication
+ * - Password reset dengan deep link processing
+ * - Token validation dan management
+ * - Comprehensive error handling
+ * - Secure password update flow
+ * - Account deletion functionality
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param supabaseClient Supabase client untuk auth operations
+ * @param repository Local repository untuk data management
+ */
+
 package com.example.melon_monitoring_and_automation.ui.viewmodel
 
 import android.content.Context
-import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
@@ -18,14 +46,9 @@ import javax.inject.Inject
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 import androidx.core.content.edit
-import com.example.melon_monitoring_and_automation.MainActivity
 import com.example.melon_monitoring_and_automation.data.network.NetworkResult
 import com.example.melon_monitoring_and_automation.ui.components.PasswordValidator
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,6 +60,7 @@ class AuthViewModel @Inject constructor(
     private val repository: HydroponicRepository
 ) : ViewModel() {
 
+    // STATE MANAGEMENT - MutableStateFlow untuk UI state
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
@@ -57,18 +81,19 @@ class AuthViewModel @Inject constructor(
 
     private var _autoCheckEnabled = MutableStateFlow(true)
 
-    // State untuk change password
+    // Change password state
     private val _changePasswordSuccess = MutableStateFlow(false)
     val changePasswordSuccess: StateFlow<Boolean> = _changePasswordSuccess.asStateFlow()
 
-    fun getCurrentSession() = supabaseClient.auth.currentSessionOrNull()
-    fun getCurrentUser() = supabaseClient.auth.currentUserOrNull()
-
-    // 🔹 FIX: Tambahkan state untuk reset password success
+    // Reset password success state
     private val _resetPasswordSuccess = MutableStateFlow(false)
     val resetPasswordSuccess: StateFlow<Boolean> = _resetPasswordSuccess.asStateFlow()
 
-    // 🔹 FIX: Constants untuk Supabase configuration
+    /**
+     * SUPABASE CONFIGURATION CONSTANTS
+     * Hardcoded values untuk Supabase URL dan Anon Key
+     * Note: Untuk production, consider menggunakan BuildConfig atau secure storage
+     */
     companion object {
         private const val SUPABASE_URL = "https://aniututpufnxevcdxiio.supabase.co"
         private const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuaXV0dXRwdWZueGV2Y2R4aWlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MTYzOTMsImV4cCI6MjA3NTI5MjM5M30.zszt_8P1WNugBVr3FyhqTYmmF3BAOQ2RwFxiCt4bm50"
@@ -78,7 +103,19 @@ class AuthViewModel @Inject constructor(
         println("🔹 [AUTH] AuthViewModel initialized")
     }
 
-    // 🔹 FIX: Simplified check auth status
+    /**
+     * GET CURRENT USER
+     * Mendapatkan current user dari Supabase auth session
+     * @return Current user atau null jika tidak ada session
+     */
+    fun getCurrentUser() = supabaseClient.auth.currentUserOrNull()
+
+    /**
+     * CHECK AUTH STATUS
+     * Memeriksa status autentikasi user saat ini
+     * Hanya dijalankan jika auto-check enabled
+     * Digunakan untuk auto-redirect di SplashScreen
+     */
     fun checkAuthStatus() {
         if (!_autoCheckEnabled.value) {
             println("🔹 [AUTH] Auto-check disabled, skipping auth check")
@@ -105,12 +142,26 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // ✅ Enable auto-check hanya untuk screen tertentu
+    /**
+     * ENABLE AUTO CHECK
+     * Mengaktifkan auto-check auth status
+     * Digunakan untuk screen yang memerlukan auth status checking
+     */
     fun enableAutoCheck() {
         _autoCheckEnabled.value = true
         println("🔹 [AUTH] Auto-check enabled")
     }
 
+    /**
+     * REGISTER USER
+     * Mendaftarkan user baru dengan email dan password
+     * Includes password strength validation
+     *
+     * @param username Username untuk user baru
+     * @param email Email address untuk registrasi
+     * @param password Password untuk akun baru
+     * @param phoneNumber Nomor telepon user (opsional)
+     */
     fun register(username: String, email: String, password: String, phoneNumber: String) {
         _isLoading.value = true
         _errorMessage.value = null
@@ -120,7 +171,7 @@ class AuthViewModel @Inject constructor(
             try {
                 println("🔹 [AUTH] Starting registration for: $email")
 
-                // 🔹 TAMBAHKAN: Validasi password strength sebelum register
+                // Password strength validation sebelum register
                 if (password.length < 6) {
                     throw Exception("Password minimal 6 karakter")
                 }
@@ -159,6 +210,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * LOGIN USER
+     * Authentikasi user dengan email dan password
+     * Includes comprehensive error handling dan user-friendly messages
+     *
+     * @param email Email address user
+     * @param password Password user
+     */
     fun login(email: String, password: String) {
         if (_isLoading.value) return
 
@@ -170,7 +229,7 @@ class AuthViewModel @Inject constructor(
             try {
                 println("🔹 [AUTH] Starting login for: $email")
 
-                // Validasi email format sederhana
+                // Email format validation
                 if (!isValidEmail(email)) {
                     _errorMessage.value = "Format email tidak valid"
                     return@launch
@@ -191,7 +250,7 @@ class AuthViewModel @Inject constructor(
                     val error = result.exceptionOrNull()?.message ?: "Login gagal"
                     println("🔹 [AUTH] Login failed: $error")
 
-                    // Handle specific errors
+                    // User-friendly error messages
                     val userFriendlyError = when {
                         error.contains("Invalid login credentials") -> "Email atau password salah"
                         error.contains("Email not confirmed") -> "Email belum dikonfirmasi"
@@ -218,12 +277,22 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Helper function untuk validasi email
+    /**
+     * VALIDATE EMAIL FORMAT
+     * Helper function untuk validasi format email
+     *
+     * @param email Email address yang akan divalidasi
+     * @return Boolean true jika format email valid
+     */
     private fun isValidEmail(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
-    // 🔹 FIX: Improved logout - clear states properly
+    /**
+     * LOGOUT USER
+     * Sign out user dari Supabase auth dan clear semua local states
+     * Comprehensive cleanup process dengan error handling
+     */
     fun logout() {
         println("🔹 [AUTH] Starting logout process")
 
@@ -270,11 +339,21 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Di AuthViewModel.kt - PERBAIKI fungsi updatePasswordWithToken
+    /**
+     * UPDATE PASSWORD WITH TOKEN
+     * Mengupdate password user menggunakan access token dari reset link
+     * Includes comprehensive validation dan error handling
+     *
+     * @param newPassword Password baru
+     * @param accessToken Token dari reset link
+     * @param context Context untuk shared preferences
+     * @param onSuccess Callback ketika berhasil
+     * @param onError Callback ketika gagal
+     */
     fun updatePasswordWithToken(
         newPassword: String,
         accessToken: String,
-        context: Context, // 🔹 TAMBAHKAN parameter context
+        context: Context,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -286,9 +365,9 @@ class AuthViewModel @Inject constructor(
 
                 println("🔹 [AUTH] Starting password update process...")
                 println("🔹 [AUTH] Token: ${accessToken.take(20)}...")
-                println("🔹 [AUTH] New Password: ${newPassword.take(3)}...") // Jangan log full password
+                println("🔹 [AUTH] New Password: ${newPassword.take(3)}...")
 
-                // 🔹 FIX: Validasi password sebelum kirim ke server
+                // Password strength validation
                 if (newPassword.length < 6) {
                     throw Exception("Password minimal 6 karakter")
                 }
@@ -297,7 +376,7 @@ class AuthViewModel @Inject constructor(
                     throw Exception("Password harus mengandung huruf besar, kecil, dan angka")
                 }
 
-                // 🔹 FIX: Gunakan method yang sudah diperbaiki
+                // Update password via Supabase Auth API
                 val result = updatePasswordViaSupabase(newPassword, accessToken)
 
                 if (result) {
@@ -306,7 +385,7 @@ class AuthViewModel @Inject constructor(
                     _authSuccess.value = true
                     println("🔹 [AUTH] ✅ Password updated successfully")
 
-                    // 🔹 Clear token setelah berhasil digunakan
+                    // Clear token setelah berhasil digunakan
                     clearRecoveryTokens(context)
                     onSuccess()
                 } else {
@@ -324,7 +403,13 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 TAMBAHKAN: Fungsi validasi password strength
+    /**
+     * VALIDATE PASSWORD STRENGTH
+     * Internal helper untuk validasi strength password
+     *
+     * @param password Password yang akan divalidasi
+     * @return Boolean true jika password memenuhi strength requirements
+     */
     private fun isPasswordStrong(password: String): Boolean {
         if (password.length < 6) return false
 
@@ -336,6 +421,15 @@ class AuthViewModel @Inject constructor(
         return hasUpperCase && hasLowerCase && hasDigits
     }
 
+    /**
+     * UPDATE PASSWORD VIA SUPABASE API
+     * Internal method untuk mengupdate password menggunakan Supabase Auth API
+     * Menggunakan OkHttp client untuk direct API calls
+     *
+     * @param newPassword Password baru
+     * @param accessToken Access token untuk authentication
+     * @return Boolean true jika update berhasil
+     */
     private suspend fun updatePasswordViaSupabase(newPassword: String, accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -401,7 +495,13 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 TAMBAHKAN: Fungsi untuk parse error message
+    /**
+     * PARSE PASSWORD ERROR
+     * Internal helper untuk parse error messages dari Supabase response
+     *
+     * @param responseBody Response body dari Supabase API
+     * @return String error message yang sudah di-parse
+     */
     private fun parsePasswordError(responseBody: String): String {
         return when {
             responseBody.contains("same_password", ignoreCase = true) ->
@@ -414,110 +514,15 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 FIX: Perbaiki semua method yang menggunakan URL
-    private suspend fun updatePasswordViaHttpURLConnection(newPassword: String, accessToken: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                println("🔹 [AUTH] Using HttpURLConnection for password update")
-
-                // 🔹 FIX: Gunakan constant URL
-                val url = URL("$SUPABASE_URL/auth/v1/user")
-                val connection = url.openConnection() as HttpURLConnection
-
-                connection.apply {
-                    requestMethod = "PUT"
-                    setRequestProperty("Authorization", "Bearer $accessToken")
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("apikey", ANON_KEY) // 🔹 FIX: Gunakan constant
-                    setRequestProperty("Prefer", "return=minimal")
-                    doOutput = true
-                    connectTimeout = 15000
-                    readTimeout = 15000
-                }
-
-                val requestBody = """
-                {"password": "$newPassword"}
-            """.trimIndent()
-
-                connection.outputStream.use { outputStream ->
-                    outputStream.write(requestBody.toByteArray(Charsets.UTF_8))
-                }
-
-                val responseCode = connection.responseCode
-                println("🔹 [AUTH] Response Code: $responseCode")
-
-                responseCode == 200
-
-            } catch (e: Exception) {
-                println("🔹 [AUTH] HttpURLConnection error: ${e.message}")
-                false
-            }
-        }
-    }
-
-    private suspend fun updatePasswordViaOkHttp(newPassword: String, accessToken: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                println("🔹 [AUTH] === USING OKHTTP FOR PASSWORD UPDATE ===")
-
-                // 🔹 FIX: Gunakan constant URL
-                val client = OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .build()
-
-                val requestBody = """
-                {
-                    "password": "$newPassword"
-                }
-            """.trimIndent().toRequestBody("application/json".toMediaType())
-
-                val request = Request.Builder()
-                    .url("$SUPABASE_URL/auth/v1/user")
-                    .put(requestBody)
-                    .addHeader("Authorization", "Bearer $accessToken")
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("apikey", ANON_KEY) // 🔹 FIX: Gunakan constant
-                    .addHeader("Prefer", "return=minimal")
-                    .build()
-
-                println("🔹 [AUTH] Sending OkHttp request...")
-
-                client.newCall(request).execute().use { response ->
-                    val responseCode = response.code
-                    val responseBody = response.body?.string() ?: "No response body"
-
-                    println("🔹 [AUTH] OkHttp Response Code: $responseCode")
-                    println("🔹 [AUTH] OkHttp Response Body: $responseBody")
-
-                    when (responseCode) {
-                        200 -> {
-                            println("🔹 [AUTH] ✅ SUCCESS: Password updated via OkHttp")
-                            true
-                        }
-                        400 -> {
-                            println("🔹 [AUTH] ❌ ERROR 400: $responseBody")
-                            false
-                        }
-                        401 -> {
-                            println("🔹 [AUTH] ❌ ERROR 401: Invalid token")
-                            false
-                        }
-                        else -> {
-                            println("🔹 [AUTH] ❌ ERROR $responseCode: $responseBody")
-                            false
-                        }
-                    }
-                }
-
-            } catch (e: Exception) {
-                println("🔹 [AUTH] ❌ OkHttp Exception: ${e.message}")
-                e.printStackTrace()
-                false
-            }
-        }
-    }
-
+    /**
+     * PROCESS PASSWORD RESET DEEP LINK
+     * Memproses deep link dari email reset password
+     * Mengekstrak token dari URL fragment
+     *
+     * @param context Context untuk shared preferences
+     * @param uriString URI string dari deep link
+     * @param onTokenExtracted Callback ketika token berhasil diekstrak
+     */
     fun processPasswordResetDeepLink(context: Context, uriString: String, onTokenExtracted: (String?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -550,7 +555,7 @@ class AuthViewModel @Inject constructor(
                 if (accessToken != null) {
                     println("🔹 [AUTH] ✅ Access token extracted successfully")
 
-                    // 🔹 PERBAIKAN: Simpan token dulu, verifikasi nanti saat update
+                    // Simpan token untuk digunakan nanti
                     saveAccessToken(context, accessToken)
                     _deepLinkProcessed.value = true
                     _errorMessage.value = null
@@ -573,7 +578,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 IMPROVED: Better token extraction
+    /**
+     * EXTRACT TOKEN FROM FRAGMENT
+     * Internal helper untuk mengekstrak token dari URL fragment
+     * Menggunakan multiple regex patterns untuk compatibility
+     *
+     * @param fragment URL fragment dari deep link
+     * @return Extracted token atau null jika tidak ditemukan
+     */
     private fun extractTokenFromFragment(fragment: String?): String? {
         if (fragment == null) {
             println("🔹 [AUTH] ❌ Fragment is null")
@@ -603,7 +615,14 @@ class AuthViewModel @Inject constructor(
         return null
     }
 
-    // Di AuthViewModel.kt - perbaiki fungsi sendPasswordResetEmail
+    /**
+     * SEND PASSWORD RESET EMAIL
+     * Mengirim email reset password ke alamat yang dimasukkan
+     * Includes redirect URL untuk deep link handling
+     *
+     * @param email Email address untuk reset password
+     * @param context Context untuk shared preferences
+     */
     fun sendPasswordResetEmail(email: String, context: Context) {
         _isLoading.value = true
         _errorMessage.value = null
@@ -614,12 +633,12 @@ class AuthViewModel @Inject constructor(
                 println("🔹 [AUTH] === SENDING PASSWORD RESET EMAIL ===")
                 println("🔹 [AUTH] Email: $email")
 
-                // 🔹 PERBAIKAN: Gunakan redirect URL yang lebih spesifik
+                // Redirect URL untuk deep link processing
                 val redirectTo = "app://supabase.com/auth/reset-password"
 
                 println("🔹 [AUTH] Using redirect URL: $redirectTo")
 
-                // 🔹 PERBAIKAN: Clear stored tokens sebelum mengirim email baru
+                // Clear stored tokens sebelum mengirim email baru
                 clearRecoveryTokens(context)
 
                 supabaseClient.auth.resetPasswordForEmail(
@@ -654,7 +673,12 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 PERBAIKAN: Tambahkan overload function tanpa context untuk backward compatibility
+    /**
+     * SEND PASSWORD RESET EMAIL (OVERLOAD)
+     * Overload method tanpa context untuk backward compatibility
+     *
+     * @param email Email address untuk reset password
+     */
     fun sendPasswordResetEmail(email: String) {
         // Default implementation tanpa context - tidak clear tokens
         _isLoading.value = true
@@ -701,6 +725,12 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * CLEAR RECOVERY TOKENS
+     * Menghapus stored tokens dari shared preferences
+     *
+     * @param context Context untuk mengakses shared preferences
+     */
     fun clearRecoveryTokens(context: Context) {
         val sharedPref = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         sharedPref.edit().apply {
@@ -714,14 +744,26 @@ class AuthViewModel @Inject constructor(
         println("🔹 [AUTH] Recovery tokens cleared")
     }
 
-    // 🔹 FIX: Simpan access token untuk digunakan nanti
+    /**
+     * SAVE ACCESS TOKEN
+     * Internal helper untuk menyimpan access token ke shared preferences
+     *
+     * @param context Context untuk shared preferences
+     * @param token Access token yang akan disimpan
+     */
     private fun saveAccessToken(context: Context, token: String) {
         val sharedPref = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         sharedPref.edit() { putString("recovery_access_token", token) }
         println("🔹 [AUTH] Access token saved")
     }
 
-    // 🔹 FIX: Ambil access token yang disimpan
+    /**
+     * GET STORED ACCESS TOKEN
+     * Mengambil stored access token dari shared preferences
+     *
+     * @param context Context untuk shared preferences
+     * @return Stored access token atau null jika tidak ada
+     */
     fun getStoredAccessToken(context: Context): String? {
         val sharedPref = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         return sharedPref.getString("recovery_access_token", null).also {
@@ -731,6 +773,11 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * LOAD CURRENT USER
+     * Memuat data current user dari repository
+     * Digunakan untuk refresh user data di UI
+     */
     fun loadCurrentUser() {
         viewModelScope.launch {
             try {
@@ -758,10 +805,19 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * CLEAR ERROR MESSAGE
+     * Membersihkan error message state
+     */
     fun clearErrorMessage() {
         _errorMessage.value = null
     }
 
+    /**
+     * CLEAR ALL STATES
+     * Membersihkan semua state kecuali auth success dan user
+     * Digunakan untuk reset state antara screen transitions
+     */
     fun clearAllStates() {
         _isLoading.value = false
         _errorMessage.value = null
@@ -769,11 +825,24 @@ class AuthViewModel @Inject constructor(
         println("🔹 [AUTH] States cleared (except auth success and user)")
     }
 
+    /**
+     * SET ERROR MESSAGE
+     * Manual set error message untuk display di UI
+     *
+     * @param message Error message yang akan ditampilkan
+     */
     fun setErrorMessage(message: String) {
         _errorMessage.value = message
     }
 
-    // Di AuthViewModel.kt - perbaiki verifyTokenValidity
+    /**
+     * VERIFY TOKEN VALIDITY
+     * Internal method untuk memverifikasi validitas access token
+     * Menggunakan Supabase Auth API untuk validation
+     *
+     * @param accessToken Token yang akan diverifikasi
+     * @return Boolean true jika token valid
+     */
     internal suspend fun verifyTokenValidity(accessToken: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -819,7 +888,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Di AuthViewModel.kt
+    /**
+     * DELETE ACCOUNT
+     * Menghapus akun user secara permanen
+     * Menggunakan Edge Function untuk secure deletion
+     *
+     * @param onSuccess Callback ketika berhasil
+     * @param onError Callback ketika gagal
+     */
     fun deleteAccount(onSuccess: () -> Unit, onError: (String) -> Unit) {
         _isLoading.value = true
         _errorMessage.value = null
@@ -828,7 +904,7 @@ class AuthViewModel @Inject constructor(
             try {
                 println("🔹 [AUTH] Starting secure account deletion via Edge Function...")
 
-                // 🎯 PANGGIL REPOSITORY YANG SUDAH DIUPDATE
+                // Panggil repository untuk account deletion
                 val result = repository.deleteUserAccount()
 
                 if (result is NetworkResult.Success && result.data == true) {
@@ -859,7 +935,16 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Fungsi untuk change password (untuk user yang sudah login)
+    /**
+     * CHANGE PASSWORD
+     * Mengubah password untuk user yang sudah login
+     * Memerlukan re-authentication dengan password saat ini
+     *
+     * @param currentPassword Password saat ini
+     * @param newPassword Password baru
+     * @param onSuccess Callback ketika berhasil
+     * @param onError Callback ketika gagal
+     */
     fun changePassword(currentPassword: String, newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
@@ -914,12 +999,21 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // Reset change password state
+    /**
+     * RESET CHANGE PASSWORD STATE
+     * Membersihkan state change password success
+     */
     fun resetChangePasswordState() {
         _changePasswordSuccess.value = false
     }
 
-    // Di AuthViewModel.kt - ubah menjadi public
+    /**
+     * PARSE DEEP LINK ERROR
+     * Parse error messages dari deep link fragment
+     *
+     * @param errorFragment URL fragment yang mengandung error
+     * @return User-friendly error message
+     */
     fun parseDeepLinkError(errorFragment: String): String {
         return when {
             errorFragment.contains("otp_expired") -> "Link reset password sudah kadaluarsa. Silakan request link baru."
@@ -936,7 +1030,13 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 🔹 PERBAIKI: Fungsi handlePasswordUpdateError yang SEBENARNYA digunakan
+    /**
+     * HANDLE PASSWORD UPDATE ERROR
+     * Internal helper untuk handle dan translate password update errors
+     *
+     * @param error Raw error message
+     * @return User-friendly error message
+     */
     private fun handlePasswordUpdateError(error: String): String {
         return when {
             error.contains("same_password", ignoreCase = true) ->

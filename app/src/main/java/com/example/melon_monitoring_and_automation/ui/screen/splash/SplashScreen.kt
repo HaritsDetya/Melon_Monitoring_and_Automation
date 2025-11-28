@@ -1,3 +1,24 @@
+/**
+ * SPLASH SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Screen pertama yang ditampilkan saat aplikasi dibuka
+ * - Melakukan pengecekan status autentikasi user
+ * - Mengarahkan user ke halaman yang sesuai berdasarkan status login
+ * - Menampilkan UI sambil melakukan initialization checks
+ *
+ * Fitur:
+ * - Auto-redirect berdasarkan auth state
+ * - Loading indicator dengan delay minimal
+ * - Gradient background yang menarik
+ * - Logo dan branding aplikasi
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param navController Navigator untuk berpindah antar screen
+ * @param viewModel ViewModel yang menangani logic autentikasi
+ */
+
 package com.example.melon_monitoring_and_automation.ui.screen.splash
 
 import androidx.compose.foundation.Image
@@ -35,18 +56,19 @@ fun SplashScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    // STATE MANAGEMENT - Collect auth state dari ViewModel
     val authState by viewModel.authSuccess.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    // 🔹 FIX: Enhanced auth handling dengan delay yang lebih baik
+    // NAVIGATION LOGIC - Handle redirect berdasarkan auth status
     LaunchedEffect(authState, currentUser, isLoading) {
         println("🔹 [SPLASH] Auth Check:")
         println("🔹   - Auth Success: $authState")
         println("🔹   - Current User: ${currentUser?.email}")
         println("🔹   - Loading: $isLoading")
 
-        // Tunggu minimal 1.5 detik untuk splash screen dan pastikan auth check selesai
+        // Minimum display time untuk splash screen (1.5 detik)
         delay(1500)
 
         // Jika masih loading, tunggu sampai selesai
@@ -55,19 +77,19 @@ fun SplashScreen(
             delay(1000)
         }
 
+        // DECISION LOGIC - Tentukan halaman tujuan
         when {
-            // User sudah login - langsung ke main app
+            // SCENARIO 1: User sudah login -> Direct ke main app
             authState && currentUser != null -> {
                 println("🔹 [SPLASH] ✅ User authenticated, going to main app")
                 navController.navigate("main_app_graph") {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             }
-            // User belum login - ke login screen
+            // SCENARIO 2: User belum login -> Direct ke auth flow
             else -> {
                 println("🔹 [SPLASH] ❌ User not authenticated, going to login")
-                // Beri delay sedikit untuk smooth transition
-                delay(500)
+                delay(500) // Smooth transition delay
                 navController.navigate("auth_graph") {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
@@ -75,6 +97,7 @@ fun SplashScreen(
         }
     }
 
+    // UI COMPOSITION - Splash screen visual elements
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -89,15 +112,17 @@ fun SplashScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
+            // APP LOGO
             Image(
                 painter = painterResource(id = R.drawable.plant),
-                contentDescription = "App Logo",
+                contentDescription = "App Logo - Melon Hydroponic",
                 modifier = Modifier.size(120.dp),
                 contentScale = ContentScale.Fit
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // APP TITLE
             Text(
                 text = "Melon Hydroponic",
                 style = MaterialTheme.typography.headlineLarge.copy(
@@ -109,6 +134,7 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // APP TAGLINE
             Text(
                 text = "Smart Monitoring System",
                 style = MaterialTheme.typography.bodyLarge.copy(
@@ -119,7 +145,7 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Loading indicator
+            // LOADING INDICATOR
             CircularProgressIndicator(
                 modifier = Modifier.size(32.dp),
                 color = Color.White

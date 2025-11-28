@@ -1,3 +1,29 @@
+/**
+ * RESET PASSWORD SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Memproses deep link reset password dari email
+ * - Memvalidasi token reset password
+ * - Memungkinkan user membuat password baru
+ * - Mengupdate password di sistem dengan token yang valid
+ *
+ * Fitur:
+ * - Deep link processing untuk token extraction
+ * - Token validation dengan timeout handling
+ * - Real-time password strength validation
+ * - Auto-navigation berdasarkan token status
+ * - Comprehensive error handling
+ *
+ * State Machine:
+ * CHECKING → VALID → SUCCESS (jika berhasil)
+ * CHECKING → INVALID/EXPIRED → ERROR → Navigate back
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param navController Untuk navigasi antar screen
+ * @param viewModel ViewModel yang menangani reset password logic
+ */
+
 package com.example.melon_monitoring_and_automation.ui.screen.auth
 
 import androidx.compose.foundation.layout.Arrangement
@@ -48,49 +74,49 @@ import androidx.compose.runtime.remember
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 
-// 🔹 FIX: Pindahkan sealed class ke luar composable
+/**
+ * TOKEN STATUS SEALED CLASS
+ * Representasi status token reset password dengan berbagai state
+ */
 sealed class TokenStatus {
-    object CHECKING : TokenStatus()
-    object VALID : TokenStatus()
-    object INVALID : TokenStatus()
-    object EXPIRED : TokenStatus()
-    object NOT_FOUND : TokenStatus()
+    object CHECKING : TokenStatus()      // Sedang memeriksa token
+    object VALID : TokenStatus()         // Token valid dan bisa digunakan
+    object INVALID : TokenStatus()       // Token tidak valid
+    object EXPIRED : TokenStatus()       // Token sudah expired
+    object NOT_FOUND : TokenStatus()     // Token tidak ditemukan
 }
 
-// Di ResetPasswordScreen.kt - PERBAIKAN ERROR
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResetPasswordScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    // CONTEXT & ACTIVITY - Untuk deep link processing
     val context = LocalContext.current
     val activity = context as? MainActivity
 
+    // LOCAL STATE MANAGEMENT - Form inputs dan UI state
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var accessToken by remember { mutableStateOf<String?>(null) }
     var tokenStatus by remember { mutableStateOf<TokenStatus>(TokenStatus.CHECKING) }
+    var showSuccessMessage by remember { mutableStateOf(false) }
+    var shouldNavigateBack by remember { mutableStateOf(false) }
 
+    // VIEWMODEL STATE - Collect state dari AuthViewModel
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val resetPasswordSuccess by viewModel.resetPasswordSuccess.collectAsState()
 
-    // Di ResetPasswordScreen - tambahkan state untuk success UI
-    var showSuccessMessage by remember { mutableStateOf(false) }
-
-    // 🔹 PERBAIKAN: Handle auto-navigate back untuk kasus no token
-    var shouldNavigateBack by remember { mutableStateOf(false) }
-
-    // 🔹 PERBAIKAN: Main LaunchedEffect untuk token processing
+    // INITIALIZATION HANDLER - Process token saat screen pertama kali dibuka
     LaunchedEffect(Unit) {
         println("🔹 [RESET PASSWORD] 🚀 Screen LaunchedEffect started")
         viewModel.clearErrorMessage()
 
-        // 🔹 DEBUG: Cek state activity
         println("🔹 [RESET PASSWORD] Activity: $activity")
 
-    // Consume deep link dari activity
+        // SCENARIO 1: Process deep link dari email (jika ada)
         val pendingDeepLink = activity?.consumePendingDeepLink()
         println("🔹 [RESET PASSWORD] 🔍 Consumed deep link: $pendingDeepLink")
 
@@ -113,7 +139,7 @@ fun ResetPasswordScreen(
                 }
             }
         } else {
-            // Cek token yang sudah disimpan
+            // SCENARIO 2: Gunakan stored token (jika ada)
             val storedToken = viewModel.getStoredAccessToken(context)
             println("🔹 [RESET PASSWORD] Stored token: ${storedToken?.take(20)}...")
 
@@ -122,6 +148,7 @@ fun ResetPasswordScreen(
                 tokenStatus = TokenStatus.CHECKING
 
                 try {
+                    // Validasi token dengan timeout 10 detik
                     val isValid = withTimeout(10000) {
                         viewModel.verifyTokenValidity(storedToken)
                     }
@@ -142,32 +169,34 @@ fun ResetPasswordScreen(
                     println("🔹 [RESET PASSWORD] ❌ Token verification error: ${e.message}")
                 }
             } else {
+                // SCENARIO 3: Tidak ada token yang tersedia
                 tokenStatus = TokenStatus.NOT_FOUND
                 viewModel.setErrorMessage("Tidak ada link reset password yang aktif.")
                 println("🔹 [RESET PASSWORD] ❌ No token found")
 
-                // 🔹 PERBAIKAN: Set state untuk auto navigate back
+                // Auto-navigate back setelah 3 detik
                 shouldNavigateBack = true
             }
         }
     }
 
-    // 🔹 PERBAIKAN: Separate LaunchedEffect untuk handle navigation
+    // AUTO-NAVIGATION HANDLER - Navigasi otomatis berdasarkan token status
     LaunchedEffect(shouldNavigateBack) {
         if (shouldNavigateBack) {
             println("🔹 [RESET PASSWORD] 🚀 Auto-navigating back due to invalid/no token")
-            delay(3000) // Tunggu 3 detik agar user bisa baca pesan error
+            delay(3000) // Beri waktu user membaca pesan error
             navController.popBackStack()
         }
     }
 
+    // SUCCESS HANDLER - Navigasi setelah reset password berhasil
     LaunchedEffect(resetPasswordSuccess) {
         if (resetPasswordSuccess) {
             showSuccessMessage = true
             println("🔹 [RESET PASSWORD] ✅ Password reset successful!")
             viewModel.clearRecoveryTokens(context)
 
-            // Tunggu lebih lama agar user baca pesan success
+            // Tunggu 3 detik agar user baca pesan success
             delay(3000)
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.ResetPassword.route) { inclusive = true }
@@ -175,7 +204,18 @@ fun ResetPasswordScreen(
         }
     }
 
-    // Di UI - tampilkan success message yang lebih menonjol
+    // INVALID TOKEN HANDLER - Auto-navigate untuk token invalid
+    LaunchedEffect(tokenStatus) {
+        if (tokenStatus == TokenStatus.INVALID) {
+            println("🔹 [RESET PASSWORD] 🚀 Auto-navigating back due to invalid token")
+            delay(2000)
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.ResetPassword.route) { inclusive = true }
+            }
+        }
+    }
+
+    // SUCCESS MESSAGE OVERLAY - Tampilkan ketika reset berhasil
     if (showSuccessMessage) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -209,18 +249,7 @@ fun ResetPasswordScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // 🔹 PERBAIKAN: Juga handle navigate back untuk token invalid dari deep link
-    LaunchedEffect(tokenStatus) {
-        if (tokenStatus == TokenStatus.INVALID) {
-            println("🔹 [RESET PASSWORD] 🚀 Auto-navigating back due to invalid token")
-            delay(2000)
-            navController.navigate(Screen.Login.route) {
-                popUpTo(Screen.ResetPassword.route) { inclusive = true }
-            }
-        }
-    }
-
-    // ... sisa kode UI yang existing ...
+    // MAIN UI LAYOUT - Scaffold dengan TopAppBar
     Scaffold(
         topBar = {
             TopAppBar(
@@ -252,6 +281,7 @@ fun ResetPasswordScreen(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // HEADER SECTION
                     Text(
                         text = "Reset Password",
                         style = MaterialTheme.typography.headlineMedium,
@@ -261,9 +291,10 @@ fun ResetPasswordScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Show token status
+                    // TOKEN STATUS DISPLAY - Tampilkan status berdasarkan tokenStatus
                     when (tokenStatus) {
                         TokenStatus.CHECKING -> {
+                            // CHECKING STATE - Sedang memvalidasi token
                             Text(
                                 text = "🔍 Memeriksa token...",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -276,6 +307,7 @@ fun ResetPasswordScreen(
                             )
                         }
                         TokenStatus.VALID -> {
+                            // VALID STATE - Token valid, tampilkan form reset password
                             Text(
                                 text = "✅ Token valid. Silakan masukkan password baru.",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -283,7 +315,6 @@ fun ResetPasswordScreen(
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
 
-                            // 🔹 TAMBAHKAN: Password fields hanya show ketika token valid
                             Text(
                                 text = "Masukkan password baru Anda",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -291,6 +322,7 @@ fun ResetPasswordScreen(
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
 
+                            // NEW PASSWORD INPUT FIELD
                             OutlinedTextField(
                                 value = newPassword,
                                 onValueChange = { newPassword = it },
@@ -306,7 +338,7 @@ fun ResetPasswordScreen(
                                 isError = newPassword.isNotBlank() && !isPasswordStrong(newPassword)
                             )
 
-                            // 🔹 TAMBAHKAN: Password Strength Indicator
+                            // PASSWORD STRENGTH INDICATOR - Real-time feedback
                             if (newPassword.isNotBlank()) {
                                 val strength = getPasswordStrength(newPassword)
                                 val strengthColor = when (strength) {
@@ -325,6 +357,7 @@ fun ResetPasswordScreen(
                                 )
                             }
 
+                            // PASSWORD LENGTH VALIDATION
                             if (newPassword.isNotBlank() && newPassword.length < 6) {
                                 Text(
                                     text = "Password minimal 6 karakter",
@@ -336,7 +369,7 @@ fun ResetPasswordScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Confirm Password Field
+                            // CONFIRM PASSWORD INPUT FIELD
                             OutlinedTextField(
                                 value = confirmPassword,
                                 onValueChange = { confirmPassword = it },
@@ -352,6 +385,7 @@ fun ResetPasswordScreen(
                                 isError = confirmPassword.isNotBlank() && newPassword != confirmPassword
                             )
 
+                            // PASSWORD MATCH VALIDATION
                             if (confirmPassword.isNotBlank() && newPassword != confirmPassword) {
                                 Text(
                                     text = "Password tidak cocok",
@@ -363,8 +397,10 @@ fun ResetPasswordScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
+                            // RESET PASSWORD BUTTON
                             Button(
                                 onClick = {
+                                    // VALIDATION LOGIC - Comprehensive form validation
                                     when {
                                         newPassword.isBlank() || confirmPassword.isBlank() -> {
                                             viewModel.setErrorMessage("Harap isi semua field")
@@ -382,16 +418,15 @@ fun ResetPasswordScreen(
                                             viewModel.setErrorMessage("Token tidak tersedia. Silakan request link reset baru.")
                                         }
                                         else -> {
+                                            // SEMUA VALIDASI LULUS - Proses reset password
                                             viewModel.clearErrorMessage()
                                             println("🔹 [RESET PASSWORD] Starting password reset with token...")
 
-                                            // 🔹 FIX: Pass context ke viewModel
                                             viewModel.updatePasswordWithToken(
                                                 newPassword = newPassword,
                                                 accessToken = accessToken!!,
-                                                context = context, // 🔹 TAMBAHKAN context di sini
+                                                context = context,
                                                 onSuccess = {
-                                                    // Success handled by LaunchedEffect
                                                     println("🔹 [RESET PASSWORD] Password update success callback")
                                                 },
                                                 onError = { error ->
@@ -414,7 +449,7 @@ fun ResetPasswordScreen(
                                         confirmPassword.isNotBlank() &&
                                         newPassword.length >= 6 &&
                                         newPassword == confirmPassword &&
-                                        isPasswordStrong(newPassword) // 🔹 TAMBAHKAN validasi strength di enabled
+                                        isPasswordStrong(newPassword)
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(
@@ -427,6 +462,7 @@ fun ResetPasswordScreen(
                             }
                         }
                         TokenStatus.INVALID -> {
+                            // INVALID STATE - Token tidak valid
                             Text(
                                 text = "❌ Token tidak valid atau sudah kadaluarsa.",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -440,6 +476,7 @@ fun ResetPasswordScreen(
                             )
                         }
                         TokenStatus.NOT_FOUND -> {
+                            // NOT FOUND STATE - Tidak ada token
                             Text(
                                 text = "📧 Tidak ada token yang ditemukan.",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -453,6 +490,7 @@ fun ResetPasswordScreen(
                             )
                         }
                         TokenStatus.EXPIRED -> {
+                            // EXPIRED STATE - Token sudah expired
                             Text(
                                 text = "⏰ Token sudah kadaluarsa.",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -462,7 +500,7 @@ fun ResetPasswordScreen(
                         }
                     }
 
-                    // Error Message
+                    // ERROR MESSAGE DISPLAY
                     if (!errorMessage.isNullOrEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(
@@ -477,7 +515,7 @@ fun ResetPasswordScreen(
                         }
                     }
 
-                    // Success Message
+                    // SUCCESS MESSAGE DISPLAY
                     if (resetPasswordSuccess) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(
@@ -494,7 +532,7 @@ fun ResetPasswordScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Manual back button untuk semua kondisi
+                    // BACK TO LOGIN BUTTON
                     Button(
                         onClick = {
                             navController.popBackStack()
@@ -514,7 +552,13 @@ fun ResetPasswordScreen(
     }
 }
 
-// 🔹 TAMBAHKAN: Fungsi helper untuk password strength indicator
+/**
+ * PASSWORD STRENGTH CALCULATOR
+ * Menghitung kekuatan password berdasarkan complexity rules
+ *
+ * @param password Password yang akan dihitung strength-nya
+ * @return String representasi strength ("Lemah", "Sedang", "Kuat")
+ */
 private fun getPasswordStrength(password: String): String {
     if (password.length < 6) return "Lemah"
 
@@ -523,6 +567,7 @@ private fun getPasswordStrength(password: String): String {
     val hasDigits = password.any { it.isDigit() }
     val hasSpecial = password.any { !it.isLetterOrDigit() }
 
+    // Hitung complexity score
     val strength = listOf(hasUpperCase, hasLowerCase, hasDigits, hasSpecial).count { it }
 
     return when {
@@ -532,7 +577,13 @@ private fun getPasswordStrength(password: String): String {
     }
 }
 
-// 🔹 Fungsi validasi password strength (sudah ada, pastikan ada)
+/**
+ * PASSWORD STRENGTH VALIDATOR
+ * Validasi apakah password memenuhi minimum strength requirements
+ *
+ * @param password Password yang akan divalidasi
+ * @return Boolean true jika password kuat, false jika lemah
+ */
 private fun isPasswordStrong(password: String): Boolean {
     if (password.length < 6) return false
     val hasUpperCase = password.any { it.isUpperCase() }

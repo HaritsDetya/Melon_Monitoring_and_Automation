@@ -21,7 +21,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -31,18 +31,36 @@ android {
             }
         }
 
-        // Perbaikan di sini: Tambahkan "\" di sekitar nilai properti
-        buildConfigField("String", "SUPABASE_URL", "\"${properties.getProperty("supabase.url")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${properties.getProperty("supabase.anon_key")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${properties.getProperty("supabase.url", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${properties.getProperty("supabase.anon_key", "")}\"")
+
+        buildConfigField("boolean", "IS_DEBUG", "false")
+    }
+
+    signingConfigs {
+        create("release") {
+            // 🔹 Akan diisi nanti saat prepare release
+            storeFile = file("../keystore/melon_hydroponic.jks")
+            storePassword = System.getenv("STORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true // 🔹 ENABLE minify untuk release
+            isShrinkResources = true // 🔹 ENABLE shrink resources
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+
+            // 🔹 Optimasi untuk release
+            isDebuggable = false
+            isJniDebuggable = false
+            isRenderscriptDebuggable = false
         }
     }
 
@@ -58,6 +76,18 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+
+    // 🔹 Tambahkan packaging options
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+        }
     }
 }
 

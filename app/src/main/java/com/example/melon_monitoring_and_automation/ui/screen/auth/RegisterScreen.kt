@@ -1,3 +1,25 @@
+/**
+ * REGISTER SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Memungkinkan user membuat akun baru dengan email, username, password, dan nomor telepon
+ * - Validasi strength password secara real-time
+ * - Memberikan feedback visual untuk requirements password
+ * - Navigasi otomatis ke main app setelah registrasi berhasil
+ *
+ * Fitur:
+ * - Form validation comprehensive
+ * - Real-time password strength indicator
+ * - Phone number formatting
+ * - Loading states dan error handling
+ * - Auto-navigation setelah registrasi sukses
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param navController Navigator untuk screen transitions
+ * @param viewModel ViewModel yang menangani registrasi logic
+ */
+
 package com.example.melon_monitoring_and_automation.ui.screen.auth
 
 import androidx.compose.foundation.Image
@@ -44,13 +66,13 @@ import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
-// Di RegisterScreen.kt - PERBAIKI dengan approach yang benar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    // LOCAL STATE MANAGEMENT - Form inputs dan UI state
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
@@ -58,26 +80,28 @@ fun RegisterScreen(
     var showPasswordRequirements by remember { mutableStateOf(false) }
     var isPasswordFocused by remember { mutableStateOf(false) }
 
+    // VIEWMODEL STATE - Collect state dari AuthViewModel
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val authSuccess by viewModel.authSuccess.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
-    // Auto-show requirements ketika password focused dan tidak empty
+    // PASSWORD REQUIREMENTS VISIBILITY - Tampilkan ketika password focused
     if (isPasswordFocused && password.isNotEmpty()) {
         showPasswordRequirements = true
     }
 
-    // 🔹 FIX: Enhanced navigation with delay for better UX
+    // NAVIGATION HANDLER - Redirect setelah registrasi berhasil
     LaunchedEffect(authSuccess, currentUser) {
         if (authSuccess && currentUser != null && !isLoading) {
-            delay(1500)
+            delay(1500) // Delay untuk user membaca feedback sukses
             navController.navigate("main_app_graph") {
                 popUpTo(Screen.Register.route) { inclusive = true }
             }
         }
     }
 
+    // MAIN UI LAYOUT
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -87,9 +111,10 @@ fun RegisterScreen(
                 )
             )
     ) {
+        // BACKGROUND DECORATION
         Image(
             painter = painterResource(id = R.drawable.plant),
-            contentDescription = "Plant pots background",
+            contentDescription = "Plant pots background decoration",
             modifier = Modifier
                 .size(200.dp)
                 .align(Alignment.BottomStart)
@@ -97,6 +122,7 @@ fun RegisterScreen(
             contentScale = ContentScale.Fit
         )
 
+        // MAIN CONTENT COLUMN
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -104,6 +130,7 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // HEADER SECTION
             Text(
                 "Daftar Akun",
                 style = MaterialTheme.typography.headlineLarge.copy(
@@ -119,7 +146,7 @@ fun RegisterScreen(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Username Field
+            // USERNAME INPUT FIELD
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -134,7 +161,7 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email Field
+            // EMAIL INPUT FIELD
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -152,10 +179,11 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Phone Number Field
+            // PHONE NUMBER INPUT FIELD dengan auto-formatting
             OutlinedTextField(
                 value = phoneNumber,
                 onValueChange = {
+                    // Auto-format: hanya allow digits dan +
                     phoneNumber = it.filter { char -> char.isDigit() || char == '+' }
                 },
                 label = { Text("Nomor Telepon", color = Color.Gray) },
@@ -173,7 +201,7 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 IMPROVED: Password Field dengan Strength Indicator
+            // PASSWORD INPUT FIELD dengan strength indicator
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = password,
@@ -194,6 +222,7 @@ fun RegisterScreen(
                     ),
                     keyboardActions = KeyboardActions(
                         onDone = {
+                            // Auto-submit ketika form valid
                             if (isFormValid(username, email, password, phoneNumber)) {
                                 viewModel.register(username, email, password, phoneNumber)
                             }
@@ -201,7 +230,7 @@ fun RegisterScreen(
                     ),
                     shape = RoundedCornerShape(12.dp),
                     isError = password.isNotBlank() && !PasswordValidator.isPasswordStrong(password),
-                    // 🔹 FIX: Gunakan interactionSource untuk track focus
+                    // Focus tracking untuk show/hide requirements
                     interactionSource = remember { MutableInteractionSource() }.also { interactionSource ->
                         LaunchedEffect(interactionSource) {
                             interactionSource.interactions.collect { interaction ->
@@ -221,7 +250,7 @@ fun RegisterScreen(
                     }
                 )
 
-                // 🔹 TAMBAHKAN: Password Strength Indicator
+                // PASSWORD STRENGTH INDICATOR - Tampilkan strength secara visual
                 if (password.isNotBlank()) {
                     val strength = PasswordValidator.getPasswordStrength(password)
                     val strengthColor = PasswordValidator.getStrengthColor(strength)
@@ -235,7 +264,7 @@ fun RegisterScreen(
                             fontWeight = FontWeight.Medium
                         )
 
-                        // Progress bar sederhana
+                        // Visual progress bar
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier = Modifier
@@ -259,7 +288,7 @@ fun RegisterScreen(
                 }
             }
 
-            // 🔹 TAMBAHKAN: Password Requirements List
+            // PASSWORD REQUIREMENTS LIST - Detail requirements
             if (showPasswordRequirements) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Card(
@@ -289,7 +318,7 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Error Message
+            // ERROR MESSAGE DISPLAY
             if (!errorMessage.isNullOrEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -304,7 +333,7 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Register Button
+            // REGISTER BUTTON
             Button(
                 onClick = {
                     viewModel.register(username, email, password, phoneNumber)
@@ -321,7 +350,7 @@ fun RegisterScreen(
                 }
             }
 
-            // Show success message
+            // SUCCESS MESSAGE DISPLAY
             if (authSuccess && currentUser != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -334,7 +363,7 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Back to Login
+            // BACK TO LOGIN NAVIGATION
             TextButton(onClick = { navController.popBackStack() }) {
                 Text(
                     "Sudah memiliki akun?",
@@ -346,7 +375,10 @@ fun RegisterScreen(
     }
 }
 
-// 🔹 PERBAIKI: Validasi form dengan strength requirement
+/**
+ * VALIDASI FORM DENGAN PASSWORD STRENGTH
+ * Validasi komprehensif untuk form registrasi termasuk strength password
+ */
 private fun isFormValidWithStrength(
     username: String,
     email: String,
@@ -357,12 +389,15 @@ private fun isFormValidWithStrength(
             email.isNotBlank() &&
             email.contains("@") && email.contains(".") &&
             password.length >= 6 &&
-            PasswordValidator.isPasswordStrong(password) && // 🔹 TAMBAHKAN strength validation
+            PasswordValidator.isPasswordStrong(password) && // Validasi strength password
             phoneNumber.isNotBlank() &&
             phoneNumber.length in 10..15
 }
 
-// 🔹 BUAT: Validasi form dasar (untuk backward compatibility)
+/**
+ * VALIDASI FORM DASAR
+ * Validasi minimal untuk backward compatibility
+ */
 private fun isFormValid(
     username: String,
     email: String,
