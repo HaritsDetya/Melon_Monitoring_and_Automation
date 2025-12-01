@@ -2,9 +2,39 @@ package com.example.melon_monitoring_and_automation.ui.components
 
 import androidx.compose.ui.graphics.Color
 
-// Di PasswordValidator.kt - TAMBAHKAN fungsi helper
+/**
+ * PASSWORD VALIDATOR OBJECT
+ *
+ * Tujuan:
+ * - Menyediakan utility functions untuk validasi kekuatan password
+ * - Memberikan feedback visual tentang keamanan password
+ * - Menentukan kriteria password yang acceptable untuk sistem
+ *
+ * Fitur:
+ * - Strength assessment berdasarkan multiple criteria
+ * - Color coding untuk visual feedback
+ * - Requirements checklist
+ * - Scoring system 0-100
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
 object PasswordValidator {
 
+    /**
+     * Menentukan kekuatan password berdasarkan kriteria keamanan.
+     *
+     * Kriteria penilaian:
+     * - Panjang minimal 6 karakter
+     * - Mengandung huruf besar
+     * - Mengandung huruf kecil
+     * - Mengandung angka
+     * - Mengandung karakter spesial
+     *
+     * @param password Password yang akan divalidasi
+     * @return String kekuatan: "Lemah", "Sedang", atau "Kuat"
+     */
     fun getPasswordStrength(password: String): String {
         if (password.length < 6) return "Lemah"
 
@@ -22,6 +52,17 @@ object PasswordValidator {
         }
     }
 
+    /**
+     * Mengembalikan warna yang merepresentasikan kekuatan password.
+     *
+     * Warna yang digunakan:
+     * - Kuat: Hijau (#388E3C)
+     * - Sedang: Orange (#F57C00)
+     * - Lemah: Merah (#D32F2F)
+     *
+     * @param strength Kekuatan password dari getPasswordStrength
+     * @return Color yang sesuai dengan kekuatan
+     */
     fun getStrengthColor(strength: String): Color {
         return when (strength) {
             "Kuat" -> Color(0xFF388E3C)
@@ -30,6 +71,17 @@ object PasswordValidator {
         }
     }
 
+    /**
+     * Memeriksa apakah password memenuhi kriteria keamanan minimal.
+     *
+     * Kriteria minimal:
+     * - Panjang ≥ 6 karakter
+     * - Mengandung huruf besar dan kecil
+     * - Mengandung angka
+     *
+     * @param password Password yang akan divalidasi
+     * @return true jika password dianggap kuat secara minimal
+     */
     fun isPasswordStrong(password: String): Boolean {
         if (password.length < 6) return false
         val hasUpperCase = password.any { it.isUpperCase() }
@@ -38,6 +90,18 @@ object PasswordValidator {
         return hasUpperCase && hasLowerCase && hasDigits
     }
 
+    /**
+     * Mendapatkan list requirement password dan status pemenuhannya.
+     *
+     * Requirements yang diperiksa:
+     * - Minimal 6 karakter
+     * - Mengandung huruf besar
+     * - Mengandung huruf kecil
+     * - Mengandung angka
+     *
+     * @param password Password yang akan divalidasi
+     * @return List of Pair<String, Boolean> (requirement, status)
+     */
     fun getPasswordRequirements(password: String): List<Pair<String, Boolean>> {
         return listOf(
             "Minimal 6 karakter" to (password.length >= 6),
@@ -47,13 +111,25 @@ object PasswordValidator {
         )
     }
 
-    // 🔹 TAMBAHKAN: Fungsi untuk mendapatkan strength score (0-100)
+    /**
+     * Menghitung score kekuatan password dalam persentase (0-100).
+     *
+     * Komponen penilaian:
+     * - Panjang: hingga 30 points (12+ karakter = 30 points)
+     * - Huruf besar: 20 points
+     * - Huruf kecil: 20 points
+     * - Angka: 20 points
+     * - Karakter spesial: 10 points
+     *
+     * @param password Password yang akan dinilai
+     * @return Integer score antara 0-100
+     */
     fun getPasswordStrengthScore(password: String): Int {
         if (password.isEmpty()) return 0
 
         var score = 0
 
-        // Length score
+        // Score berdasarkan panjang
         score += when {
             password.length >= 12 -> 30
             password.length >= 8 -> 20
@@ -61,7 +137,7 @@ object PasswordValidator {
             else -> 0
         }
 
-        // Character variety score
+        // Score berdasarkan variasi karakter
         if (password.any { it.isUpperCase() }) score += 20
         if (password.any { it.isLowerCase() }) score += 20
         if (password.any { it.isDigit() }) score += 20

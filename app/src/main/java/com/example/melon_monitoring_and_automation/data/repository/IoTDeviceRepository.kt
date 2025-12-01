@@ -1,3 +1,22 @@
+/**
+ * IOT DEVICE REPOSITORY - DEVICE MANAGEMENT LAYER
+ *
+ * Tujuan:
+ * - Menyediakan specialized data operations untuk IoT device management
+ * - Mengelola device pairing, listing, dan user-device relationships
+ * - Menangani business logic khusus untuk IoT device operations
+ *
+ * Features:
+ * - Device Pairing dengan pairing code validation
+ * - Device Listing berdasarkan greenhouse dan user
+ * - Device Status Management
+ * - User-Device Relationship Management
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param context Android Context untuk system operations
+ */
+
 package com.example.melon_monitoring_and_automation.data.repository
 
 import android.content.Context
@@ -14,7 +33,16 @@ class IoTDeviceRepository(
 ) {
     private val supabaseClient = SupabaseManager.client
 
-    // Pair device dengan user/greenhouse
+    /**
+     * PAIR DEVICE
+     * Mem-pair device IoT dengan greenhouse tertentu
+     * Validates pairing code dan device availability
+     *
+     * @param deviceId Unique device identifier
+     * @param pairingCode Code pairing untuk validasi
+     * @param greenhouseId ID greenhouse target untuk pairing
+     * @return NetworkResult dengan paired device data
+     */
     suspend fun pairDevice(
         deviceId: String,
         pairingCode: String,
@@ -33,7 +61,7 @@ class IoTDeviceRepository(
                         filter {
                             eq("device_id", deviceId)
                             eq("pairing_code", pairingCode)
-                            eq("is_paired", false)
+                            eq("is_paired", false) // Hanya device yang belum paired
                         }
                     }
                     .decodeSingle()
@@ -48,7 +76,13 @@ class IoTDeviceRepository(
         }
     }
 
-    // Get devices by greenhouse
+    /**
+     * GET GREENHOUSE DEVICES
+     * Mengambil semua devices yang ter-pair dengan greenhouse tertentu
+     *
+     * @param greenhouseId ID greenhouse target
+     * @return NetworkResult dengan list of IoT devices
+     */
     suspend fun getGreenhouseDevices(greenhouseId: String): NetworkResult<List<IoTDevice>> {
         return withContext(Dispatchers.IO) {
             try {
@@ -70,16 +104,24 @@ class IoTDeviceRepository(
         }
     }
 
-    // Get all user's devices
+    /**
+     * GET USER DEVICES
+     * Mengambil semua devices yang dimiliki oleh user tertentu
+     * Melalui relationship user → greenhouses → devices
+     *
+     * @param userId ID user pemilik devices
+     * @return NetworkResult dengan list of all user's devices
+     */
     suspend fun getUserDevices(userId: String): NetworkResult<List<IoTDevice>> {
         return withContext(Dispatchers.IO) {
             try {
-                // First get user's greenhouses, then get devices for each greenhouse
+                // STEP 1: Get semua greenhouse milik user
                 val greenhousesResult = getGreenhousesByUser(userId)
 
                 if (greenhousesResult is NetworkResult.Success) {
                     val allDevices = mutableListOf<IoTDevice>()
 
+                    // STEP 2: Untuk setiap greenhouse, ambil devices-nya
                     greenhousesResult.data.forEach { greenhouse ->
                         val devicesResult = getGreenhouseDevices(greenhouse.id)
                         if (devicesResult is NetworkResult.Success) {
@@ -98,7 +140,13 @@ class IoTDeviceRepository(
         }
     }
 
-    // Helper function to get user's greenhouses
+    /**
+     * GET GREENHOUSES BY USER - Helper Method
+     * Internal helper untuk mengambil greenhouse milik user
+     *
+     * @param userId ID user pemilik greenhouse
+     * @return NetworkResult dengan list of user's greenhouses
+     */
     private suspend fun getGreenhousesByUser(userId: String): NetworkResult<List<com.example.melon_monitoring_and_automation.domain.model.Greenhouse>> {
         return withContext(Dispatchers.IO) {
             try {

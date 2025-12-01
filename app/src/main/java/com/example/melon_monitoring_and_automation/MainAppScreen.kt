@@ -1,3 +1,22 @@
+/**
+ * MAIN APP SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Main screen untuk user yang sudah terautentikasi
+ * - Menyediakan bottom navigation antara Dashboard, Control, dan Profile
+ * - Mengelola nested navigation dalam main app flow
+ * - Menyediakan consistent UI structure dengan bottom bar
+ *
+ * Features:
+ * - Bottom Navigation dengan 3 tab utama
+ * - Nested Navigation Host untuk setiap tab
+ * - State preservation antara tab switches
+ * - Consistent padding dan layout structure
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param navController Parent navigator untuk cross-screen navigation
+ */
 
 package com.example.melon_monitoring_and_automation
 
@@ -25,13 +44,24 @@ import com.example.melon_monitoring_and_automation.ui.screen.control.ControlScre
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.DashboardScreen
 import com.example.melon_monitoring_and_automation.ui.screen.profile.ProfileScreen
 
-// Data class untuk bottom nav items
+/**
+ * BOTTOM NAVIGATION ITEM DATA CLASS
+ * Representasi item dalam bottom navigation bar
+ *
+ * @property route Navigation route untuk item
+ * @property icon Icon yang ditampilkan
+ * @property title Judul yang ditampilkan
+ */
 data class BottomNavItem(
     val route: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String
 )
 
+/**
+ * BOTTOM NAVIGATION ITEMS
+ * Daftar item yang ditampilkan di bottom navigation bar
+ */
 val bottomNavItems = listOf(
     BottomNavItem(
         route = Screen.Dashboard.route,
@@ -54,10 +84,14 @@ val bottomNavItems = listOf(
 fun MainAppScreen(
     navController: NavController
 ) {
+    // INNER NAVIGATION - Navigation untuk tab-specific flows
     val innerNavController = rememberNavController()
     val navBackStackEntry by innerNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    /**
+     * MAIN LAYOUT - Scaffold dengan Bottom Navigation
+     */
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -72,6 +106,7 @@ fun MainAppScreen(
                         label = { Text(item.title) },
                         selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
                         onClick = {
+                            // Navigation dengan state preservation
                             innerNavController.navigate(item.route) {
                                 popUpTo(innerNavController.graph.findStartDestination().id) {
                                     saveState = true
@@ -85,31 +120,36 @@ fun MainAppScreen(
             }
         }
     ) { innerPadding ->
+        /**
+         * INNER NAVIGATION HOST - Navigation untuk setiap tab
+         */
         NavHost(
             navController = innerNavController,
             startDestination = Screen.Dashboard.route,
             modifier = androidx.compose.ui.Modifier.padding(innerPadding)
         ) {
-            // Dashboard Screen
+            // DASHBOARD SCREEN - Main monitoring screen
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
                     onGreenhouseClick = { greenhouseId ->
+                        // Navigate ke greenhouse detail menggunakan parent navController
                         navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId")
                     }
                 )
             }
 
-            // 🔹 UPDATED: Control Screen dengan Device Management
+            // CONTROL SCREEN - Device control dan management
             composable(Screen.Control.route) {
                 ControlScreen(
                     onManageDevicesClick = {
                         // Navigate to device list menggunakan parent navController
-                        navController.navigate(Screen.DeviceList.route)
-                    }
+                        navController.navigate(Screen.DeviceManagement.route)
+                    },
+                    onBackClick = { navController.popBackStack() }
                 )
             }
 
-            // Profile Screen
+            // PROFILE SCREEN - User profile dan account management
             composable(Screen.Profile.route) {
                 ProfileScreen(navController = navController)
             }

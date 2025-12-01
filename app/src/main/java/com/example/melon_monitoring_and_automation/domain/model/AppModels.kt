@@ -187,50 +187,101 @@ data class MonthYear(
         }
 }
 
+// ============ IoT DEVICE MODELS (NEW - FOR SUPABASE INTEGRATION) ============
+
 @Serializable
 data class IoTDevice(
     val id: String,
-    val deviceId: String,
-    val serialNumber: String,
-    val deviceName: String,
-    val deviceType: DeviceType = DeviceType.HYDROPONIC_SENSOR,
-    val greenhouseId: String? = null,
-    val pairingCode: String,
-    val isPaired: Boolean = false,
-    val pairedAt: String? = null,
-    val createdAt: String,
-    val lastSeen: String? = null,
-    val firmwareVersion: String? = null,
-    val batteryLevel: Int? = null,
-    val signalStrength: Int? = null,
-    val onlineStatus: Boolean = true
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("serial_number") val serialNumber: String,
+    @SerialName("device_name") val deviceName: String?,
+    @SerialName("device_type") val deviceType: DeviceType = DeviceType.HYDROPONIC_SENSOR,
+    @SerialName("greenhouse_id") val greenhouseId: String? = null,
+    @SerialName("pairing_code") val pairingCode: String,
+    @SerialName("is_paired") val isPaired: Boolean = false,
+    @SerialName("paired_at") val pairedAt: String? = null,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("last_seen") val lastSeen: String? = null,
+    @SerialName("firmware_version") val firmwareVersion: String? = null,
+    @SerialName("encryption_key") val encryptionKey: String? = null
 )
 
 @Serializable
 enum class DeviceType {
-    HYDROPONIC_SENSOR,
-    TEMPERATURE_SENSOR,
-    HUMIDITY_SENSOR,
-    PH_SENSOR,
-    TDS_SENSOR,
-    WATER_TEMP_SENSOR,
-    CONTROLLER_DEVICE
+    @SerialName("HYDROPONIC_SENSOR") HYDROPONIC_SENSOR,
+    @SerialName("TEMPERATURE_SENSOR") TEMPERATURE_SENSOR,
+    @SerialName("HUMIDITY_SENSOR") HUMIDITY_SENSOR,
+    @SerialName("PH_SENSOR") PH_SENSOR,
+    @SerialName("TDS_SENSOR") TDS_SENSOR,
+    @SerialName("WATER_TEMP_SENSOR") WATER_TEMP_SENSOR,
+    @SerialName("CONTROLLER_DEVICE") CONTROLLER_DEVICE
 }
 
 @Serializable
-data class DeviceTelemetry(
-    val id: String,
-    val deviceId: String,
-    val batteryLevel: Int?,
-    val signalStrength: Int?,
-    val onlineStatus: Boolean = true,
-    val reportedAt: String
+data class DevicePairingRequest(
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("pairing_code") val pairingCode: String,
+    @SerialName("greenhouse_id") val greenhouseId: String
 )
 
 @Serializable
-data class DeviceQRCode(
-    val deviceId: String,
-    val serialNumber: String,
-    val pairingCode: String,
-    val deviceType: DeviceType = DeviceType.HYDROPONIC_SENSOR
+data class DeviceStatusUpdate(
+    @SerialName("last_seen") val lastSeen: String,
+    @SerialName("firmware_version") val firmwareVersion: String? = null
+)
+
+@Serializable
+data class DeviceTelemetryData(
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("greenhouse_id") val greenhouseId: String,
+    val temperature: Double? = null,
+    val humidity: Double? = null,
+    @SerialName("water_temp") val waterTemp: Double? = null,
+    val ph: Double? = null,
+    val tds: Double? = null,
+    @SerialName("battery_level") val batteryLevel: Int? = null,
+    @SerialName("signal_strength") val signalStrength: Int? = null,
+    @SerialName("recorded_at") val recordedAt: String
+)
+
+@Serializable
+data class DeviceCommand(
+    val id: String,
+    @SerialName("device_id") val deviceId: String,
+    val command: String,
+    val payload: String? = null,
+    @SerialName("is_executed") val isExecuted: Boolean = false,
+    @SerialName("executed_at") val executedAt: String? = null,
+    @SerialName("created_at") val createdAt: String
+)
+
+@Serializable
+data class SendDeviceCommand(
+    @SerialName("device_id") val deviceId: String,
+    val command: String,
+    val payload: String? = null
+)
+
+// Response untuk pairing device
+@Serializable
+data class DevicePairingResponse(
+    val success: Boolean,
+    val message: String,
+    val device: IoTDevice? = null
+)
+
+// Response untuk device telemetry
+@Serializable
+data class DeviceTelemetryResponse(
+    val device: IoTDevice,
+    val telemetry: DeviceTelemetryData? = null,
+    @SerialName("last_reading") val lastReading: SensorReadings? = null
+)
+
+// Untuk list devices dengan pagination
+@Serializable
+data class DevicesListResponse(
+    val devices: List<IoTDevice>,
+    val count: Int,
+    @SerialName("total_count") val totalCount: Int
 )

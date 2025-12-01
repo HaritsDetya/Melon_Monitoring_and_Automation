@@ -60,13 +60,39 @@ import com.example.melon_monitoring_and_automation.domain.model.ControlDevices
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
 import com.example.melon_monitoring_and_automation.ui.viewmodel.ControlViewModel
 
+/**
+ * CONTROL SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan interface untuk mengontrol perangkat IoT greenhouse
+ * - Memungkinkan kontrol manual dan otomatis untuk blower, pompa, dan sistem nutrisi
+ * - Menampilkan status real-time perangkat dan pengaturan automasi
+ *
+ * Fitur:
+ * - Greenhouse selector untuk memilih greenhouse yang akan dikontrol
+ * - Blower control dengan mode manual dan otomatis
+ * - Nutrient pump control dengan adjustable droplet settings
+ * - Main pump control untuk sirkulasi air
+ * - Temperature threshold settings untuk automasi
+ * - Real-time device status updates
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param viewModel ViewModel yang mengelola state dan logic kontrol perangkat
+ * @param onManageDevicesClick Callback untuk navigasi ke device management screen
+ */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlScreen(
     viewModel: ControlViewModel = hiltViewModel(),
-    onManageDevicesClick: () -> Unit = {}
+    onManageDevicesClick: () -> Unit = {},
+    onBackClick: () -> Unit = {}
 ) {
+    // LOCAL STATE MANAGEMENT
     var selectedGreenhouse by remember { mutableStateOf<String?>(null) }
+
+    // VIEWMODEL STATE COLLECTION
     val greenhouses by viewModel.greenhouses.collectAsState()
     val controlDevices by viewModel.controlDevices.collectAsState()
     val automationSettings by viewModel.automationSettings.collectAsState()
@@ -76,10 +102,10 @@ fun ControlScreen(
 
     val darkGreen = Color(0xFF2E7D32)
 
-    // Set status bar
+    // STATUS BAR CONFIGURATION
     SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
 
-    // Handle success messages
+    // SUCCESS MESSAGE HANDLER
     LaunchedEffect(updateSuccess) {
         if (updateSuccess) {
             // Show success message or snackbar
@@ -87,6 +113,7 @@ fun ControlScreen(
         }
     }
 
+    // MAIN SCAFFOLD LAYOUT
     Scaffold(
         topBar = {
             TopAppBar(
@@ -95,8 +122,17 @@ fun ControlScreen(
                     containerColor = darkGreen,
                     titleContentColor = Color.White
                 ),
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Kembali",
+                            tint = Color.White
+                        )
+                    }
+                },
                 actions = {
-                    // Tambahkan button untuk manage devices
+                    // Device Management Button
                     IconButton(onClick = onManageDevicesClick) {
                         Icon(
                             Icons.Default.DeviceHub,
@@ -113,127 +149,245 @@ fun ControlScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Error Message
+            // ERROR MESSAGE DISPLAY
             if (!errorMessage.isNullOrEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            errorMessage!!,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { viewModel.clearErrorMessage() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
-                        }
-                    }
-                }
+                ErrorMessageCard(
+                    message = errorMessage!!,
+                    onDismiss = { viewModel.clearErrorMessage() }
+                )
             }
 
-            // 🔹 PERBAIKAN: Gunakan Column dengan verticalScroll
+            // MAIN CONTENT AREA - Scrollable
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Greenhouse Selector
+                // GREENHOUSE SELECTOR SECTION
                 GreenhouseSelector(
                     greenhouses = greenhouses,
                     selectedGreenhouse = selectedGreenhouse,
                     onGreenhouseSelected = { selectedGreenhouse = it }
                 )
 
+                // CONTENT BASED ON LOADING STATE
                 if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    LoadingState()
                 } else {
                     selectedGreenhouse?.let { greenhouseId ->
                         val controlDevice = controlDevices[greenhouseId]
                         val settings = automationSettings[greenhouseId]
 
                         if (controlDevice != null && settings != null) {
-                            // Blower Control Section
-                            BlowerControlSection(
+                            // CONTROL SECTIONS FOR SELECTED GREENHOUSE
+                            ControlSections(
+                                greenhouseId = greenhouseId,
                                 controlDevice = controlDevice,
-                                automationSettings = settings,
-                                onBlowerToggle = { enabled ->
-                                    viewModel.toggleBlower(greenhouseId, enabled)
-                                },
-                                onAutoModeToggle = { autoMode ->
-                                    viewModel.setAutoMode(greenhouseId, autoMode)
-                                },
-                                onTemperatureThresholdsChange = { minTemp, maxTemp ->
-                                    viewModel.updateTemperatureThresholds(greenhouseId, minTemp, maxTemp)
-                                }
+                                settings = settings,
+                                viewModel = viewModel
                             )
-
-                            // Nutrient Pump Control Section
-                            NutrientPumpControlSection(
-                                automationSettings = settings,
-                                onDropletsChange = { droplets ->
-                                    viewModel.setNutrientDroplets(greenhouseId, droplets)
-                                }
-                            )
-
-                            // Additional Pump Control
-                            PumpControlSection(
-                                controlDevice = controlDevice,
-                                onPumpToggle = { enabled ->
-                                    viewModel.togglePump(greenhouseId, enabled)
-                                }
-                            )
-
-                            // 🔹 TAMBAHKAN: Spacer untuk memberikan ruang di bagian bawah
-                            Spacer(modifier = Modifier.height(32.dp))
                         } else {
-                            // Data tidak tersedia
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Data perangkat tidak tersedia untuk greenhouse ini",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = Color.Gray
-                                )
-                            }
+                            // NO DATA AVAILABLE STATE
+                            NoDataAvailableState()
                         }
                     } ?: run {
-                        // No greenhouse selected
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Pilih greenhouse untuk mengontrol perangkat",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Gray
-                            )
-                        }
+                        // NO GREENHOUSE SELECTED STATE
+                        NoGreenhouseSelectedState()
                     }
                 }
             }
         }
     }
 }
+
+/**
+ * ERROR MESSAGE CARD COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan error message dalam format yang konsisten
+ * - Menyediakan dismiss functionality untuk user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param message Pesan error yang akan ditampilkan
+ * @param onDismiss Callback ketika error di-dismiss
+ */
+
+@Composable
+private fun ErrorMessageCard(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                message,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
+            }
+        }
+    }
+}
+
+/**
+ * LOADING STATE COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI loading selama data dimuat
+ * - Memberikan feedback visual kepada user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
+//@Composable
+//private fun LoadingState() {
+//    Box(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .height(200.dp),
+//        contentAlignment = Alignment.Center
+//    ) {
+//        CircularProgressIndicator()
+//    }
+//}
+
+/**
+ * NO DATA AVAILABLE STATE COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI ketika data perangkat tidak tersedia
+ * - Memberikan feedback yang jelas tentang status data
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
+@Composable
+private fun NoDataAvailableState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "Data perangkat tidak tersedia untuk greenhouse ini",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray
+        )
+    }
+}
+
+/**
+ * NO GREENHOUSE SELECTED STATE COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI ketika belum ada greenhouse yang dipilih
+ * - Memberikan instruksi yang jelas kepada user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
+@Composable
+private fun NoGreenhouseSelectedState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "Pilih greenhouse untuk mengontrol perangkat",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray
+        )
+    }
+}
+
+/**
+ * CONTROL SECTIONS COMPOSABLE
+ *
+ * Tujuan:
+ * - Mengelompokkan semua section kontrol perangkat
+ * - Menyediakan structured layout untuk berbagai jenis kontrol
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouseId ID greenhouse yang sedang dipilih
+ * @param controlDevice Data kontrol perangkat greenhouse
+ * @param settings Pengaturan automasi greenhouse
+ * @param viewModel ViewModel untuk handling actions
+ */
+
+@Composable
+private fun ControlSections(
+    greenhouseId: String,
+    controlDevice: ControlDevices,
+    settings: AutomationSettings,
+    viewModel: ControlViewModel
+) {
+    // BLOWER CONTROL SECTION
+    BlowerControlSection(
+        controlDevice = controlDevice,
+        automationSettings = settings,
+        onBlowerToggle = { enabled ->
+            viewModel.toggleBlower(greenhouseId, enabled)
+        },
+        onAutoModeToggle = { autoMode ->
+            viewModel.setAutoMode(greenhouseId, autoMode)
+        },
+        onTemperatureThresholdsChange = { minTemp, maxTemp ->
+            viewModel.updateTemperatureThresholds(greenhouseId, minTemp, maxTemp)
+        }
+    )
+
+    // NUTRIENT PUMP CONTROL SECTION
+    NutrientPumpControlSection(
+        automationSettings = settings,
+        onDropletsChange = { droplets ->
+            viewModel.setNutrientDroplets(greenhouseId, droplets)
+        }
+    )
+
+    // MAIN PUMP CONTROL SECTION
+    PumpControlSection(
+        controlDevice = controlDevice,
+        onPumpToggle = { enabled ->
+            viewModel.togglePump(greenhouseId, enabled)
+        }
+    )
+
+    // BOTTOM SPACER
+    Spacer(modifier = Modifier.height(32.dp))
+}
+
+/**
+ * GREENHOUSE SELECTOR COMPOSABLE
+ *
+ * Tujuan:
+ * - Memungkinkan user memilih greenhouse yang akan dikontrol
+ * - Menampilkan daftar greenhouse dalam format radio button
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouses List greenhouse yang tersedia
+ * @param selectedGreenhouse ID greenhouse yang sedang dipilih
+ * @param onGreenhouseSelected Callback ketika greenhouse dipilih
+ */
 
 @Composable
 fun GreenhouseSelector(
@@ -292,6 +446,29 @@ fun GreenhouseSelector(
     }
 }
 
+/**
+ * BLOWER CONTROL SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan kontrol untuk sistem blower/kipas greenhouse
+ * - Mendukung mode manual dan otomatis berdasarkan suhu
+ * - Memungkinkan pengaturan threshold suhu untuk automasi
+ *
+ * Fitur:
+ * - Auto/manual mode switch
+ * - Manual blower control (disabled dalam auto mode)
+ * - Temperature threshold settings
+ * - Real-time status display
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param controlDevice Data kontrol perangkat blower
+ * @param automationSettings Pengaturan automasi suhu
+ * @param onBlowerToggle Callback untuk toggle blower manual
+ * @param onAutoModeToggle Callback untuk toggle mode automasi
+ * @param onTemperatureThresholdsChange Callback untuk update threshold suhu
+ */
+
 @Composable
 fun BlowerControlSection(
     controlDevice: ControlDevices,
@@ -310,6 +487,7 @@ fun BlowerControlSection(
             .padding(horizontal = 16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // SECTION HEADER
             Text(
                 "Kontrol Blower",
                 style = MaterialTheme.typography.headlineSmall,
@@ -319,7 +497,7 @@ fun BlowerControlSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Auto/Manual Mode Switch
+            // AUTO/MANUAL MODE SWITCH
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -345,7 +523,7 @@ fun BlowerControlSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Manual Blower Control (disabled in auto mode)
+            // MANUAL BLOWER CONTROL (disabled in auto mode)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -370,7 +548,7 @@ fun BlowerControlSection(
                 )
             }
 
-            // Temperature thresholds info
+            // TEMPERATURE THRESHOLDS INFO CARD
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E8)),
@@ -395,7 +573,7 @@ fun BlowerControlSection(
                 }
             }
 
-            // Temperature Settings Button
+            // TEMPERATURE SETTINGS BUTTON
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { showTempSettings = true },
@@ -407,7 +585,7 @@ fun BlowerControlSection(
         }
     }
 
-    // Temperature Settings Dialog
+    // TEMPERATURE SETTINGS DIALOG
     if (showTempSettings) {
         TemperatureSettingsDialog(
             minTemp = minTemp,
@@ -428,6 +606,26 @@ fun BlowerControlSection(
     }
 }
 
+/**
+ * NUTRIENT PUMP CONTROL SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Mengontrol pompa nutrisi AB Mix dengan adjustable droplet settings
+ * - Memungkinkan pengaturan jumlah tetesan per siklus
+ * - Menyediakan visual feedback untuk current settings
+ *
+ * Fitur:
+ * - Droplet counter dengan increment/decrement buttons
+ * - Range validation (1-50 tetesan)
+ * - Confirmation dialog sebelum save
+ * - Visual droplet display
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param automationSettings Pengaturan automasi termasuk nutrient droplets
+ * @param onDropletsChange Callback untuk update jumlah tetesan
+ */
+
 @Composable
 fun NutrientPumpControlSection(
     automationSettings: AutomationSettings,
@@ -445,6 +643,7 @@ fun NutrientPumpControlSection(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // SECTION HEADER
             Text(
                 "🏭 Pompa Nutrisi AB Mix",
                 style = MaterialTheme.typography.headlineSmall,
@@ -463,7 +662,7 @@ fun NutrientPumpControlSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Droplet Counter
+            // DROPLET COUNTER INTERFACE
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "Jumlah Tetesan",
@@ -478,7 +677,7 @@ fun NutrientPumpControlSection(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Minus Button
+                    // MINUS BUTTON
                     IconButton(
                         onClick = {
                             if (currentDroplets > 1) {
@@ -506,7 +705,7 @@ fun NutrientPumpControlSection(
                         }
                     }
 
-                    // Droplet Display
+                    // DROPLET DISPLAY
                     Box(
                         modifier = Modifier
                             .size(100.dp)
@@ -531,7 +730,7 @@ fun NutrientPumpControlSection(
                         }
                     }
 
-                    // Plus Button
+                    // PLUS BUTTON
                     IconButton(
                         onClick = {
                             if (currentDroplets < 50) {
@@ -570,7 +769,7 @@ fun NutrientPumpControlSection(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // OK Button
+            // SAVE BUTTON
             Button(
                 onClick = { showConfirmDialog = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -582,7 +781,7 @@ fun NutrientPumpControlSection(
         }
     }
 
-    // Confirmation Dialog
+    // CONFIRMATION DIALOG
     if (showConfirmDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -609,6 +808,20 @@ fun NutrientPumpControlSection(
     }
 }
 
+/**
+ * PUMP CONTROL SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Mengontrol pompa sirkulasi air utama greenhouse
+ * - Menyediakan toggle switch untuk on/off status
+ * - Menampilkan visual status indicator
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param controlDevice Data kontrol perangkat pompa
+ * @param onPumpToggle Callback untuk toggle status pompa
+ */
+
 @Composable
 fun PumpControlSection(
     controlDevice: ControlDevices,
@@ -620,6 +833,7 @@ fun PumpControlSection(
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // SECTION HEADER
             Text(
                 "💧 Pompa Utama",
                 style = MaterialTheme.typography.headlineSmall,
@@ -637,6 +851,7 @@ fun PumpControlSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // PUMP TOGGLE SWITCH
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -660,7 +875,7 @@ fun PumpControlSection(
                 )
             }
 
-            // Status indicator
+            // STATUS INDICATOR
             Spacer(modifier = Modifier.height(12.dp))
             Card(
                 colors = CardDefaults.cardColors(
@@ -692,6 +907,29 @@ fun PumpControlSection(
     }
 }
 
+/**
+ * TEMPERATURE SETTINGS DIALOG COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan dialog untuk mengatur threshold suhu automasi
+ * - Memvalidasi input temperature ranges
+ * - Menampilkan error messages untuk invalid input
+ *
+ * Validasi:
+ * - Min dan max harus angka valid
+ * - Min harus < max
+ * - Temperature range: 0°C - 50°C
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param minTemp Current minimum temperature value
+ * @param maxTemp Current maximum temperature value
+ * @param onMinTempChange Callback ketika min temp berubah
+ * @param onMaxTempChange Callback ketika max temp berubah
+ * @param onSave Callback ketika settings disimpan
+ * @param onDismiss Callback ketika dialog ditutup
+ */
+
 @Composable
 fun TemperatureSettingsDialog(
     minTemp: String,
@@ -703,7 +941,7 @@ fun TemperatureSettingsDialog(
 ) {
     var tempError by remember { mutableStateOf<String?>(null) }
 
-    // Validasi input
+    // INPUT VALIDATION FUNCTION
     fun validateInput(): Boolean {
         val min = minTemp.toDoubleOrNull()
         val max = maxTemp.toDoubleOrNull()
@@ -736,7 +974,7 @@ fun TemperatureSettingsDialog(
                 Text("Atur rentang suhu untuk kontrol blower otomatis:")
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Error message
+                // ERROR MESSAGE DISPLAY
                 tempError?.let { error ->
                     Text(
                         error,
@@ -746,7 +984,7 @@ fun TemperatureSettingsDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Min Temperature
+                // MIN TEMPERATURE INPUT
                 Text("Suhu Minimum (°C):", fontWeight = FontWeight.Medium)
                 OutlinedTextField(
                     value = minTemp,
@@ -762,7 +1000,7 @@ fun TemperatureSettingsDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Max Temperature
+                // MAX TEMPERATURE INPUT
                 Text("Suhu Maksimum (°C):", fontWeight = FontWeight.Medium)
                 OutlinedTextField(
                     value = maxTemp,

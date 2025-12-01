@@ -36,6 +36,35 @@ import com.example.melon_monitoring_and_automation.domain.model.DateRange
 import com.example.melon_monitoring_and_automation.domain.model.MonthYear
 import com.example.melon_monitoring_and_automation.domain.model.TimeRange
 
+/**
+ * DATE RANGE PICKER COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan interface pemilihan rentang tanggal untuk filtering data historis
+ * - Memungkinkan pemilihan bulan dan minggu tertentu
+ * - Menampilkan overlay dialog untuk experience yang terpusat
+ *
+ * Fitur:
+ * - Pilihan bulan dari available months
+ * - Pilihan minggu berdasarkan bulan terpilih
+ * - Custom date range selection
+ * - Visual feedback untuk pilihan aktif
+ * - Responsive design untuk berbagai screen size
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param showDateRangePicker Boolean kontrol visibilitas picker
+ * @param availableMonths List bulan-tahun yang tersedia
+ * @param selectedMonth Bulan-tahun yang sedang dipilih
+ * @param weeklyRanges List rentang tanggal mingguan
+ * @param selectedTimeRange Rentang waktu yang dipilih
+ * @param customDateRange Rentang tanggal kustom
+ * @param onMonthSelected Callback ketika bulan dipilih
+ * @param onDateRangeSelected Callback ketika rentang tanggal dipilih
+ * @param onClose Callback ketika picker ditutup
+ * @param modifier Modifier untuk kustomisasi layout
+ */
+
 @Composable
 fun DateRangePicker(
     showDateRangePicker: Boolean,
@@ -67,7 +96,7 @@ fun DateRangePicker(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    // Header
+                    // HEADER SECTION - Title dan close button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -84,7 +113,7 @@ fun DateRangePicker(
                         }
                     }
 
-                    // Month Selection
+                    // MONTH SELECTION SECTION
                     Text(
                         "Pilih Bulan:",
                         style = MaterialTheme.typography.bodyMedium,
@@ -104,7 +133,7 @@ fun DateRangePicker(
                         }
                     }
 
-                    // Weekly Ranges - hanya tampilkan jika bulan terpilih
+                    // WEEKLY RANGES SECTION - Hanya tampil jika bulan terpilih
                     if (selectedMonth != null && weeklyRanges.isNotEmpty()) {
                         Text(
                             "Pilih Minggu:",
@@ -126,6 +155,7 @@ fun DateRangePicker(
                             }
                         }
                     } else if (selectedMonth != null) {
+                        // EMPTY STATE - Tidak ada data untuk bulan terpilih
                         Text(
                             "Tidak ada data untuk bulan ini",
                             style = MaterialTheme.typography.bodySmall,
@@ -134,7 +164,7 @@ fun DateRangePicker(
                         )
                     }
 
-                    // Selected Range Info
+                    // SELECTED RANGE INFO
                     if (customDateRange != null) {
                         Text(
                             "Rentang terpilih: ${customDateRange.label}",
@@ -145,7 +175,7 @@ fun DateRangePicker(
                         )
                     }
 
-                    // Instruction
+                    // USAGE INSTRUCTION
                     Text(
                         "Pilih bulan terlebih dahulu, lalu pilih minggu yang diinginkan",
                         style = MaterialTheme.typography.bodySmall,
@@ -158,6 +188,20 @@ fun DateRangePicker(
     }
 }
 
+/**
+ * MONTH CHIP COMPOSABLE
+ *
+ * Tujuan:
+ * - Merepresentasikan satu bulan dalam bentuk chip yang dapat diklik
+ * - Memberikan visual feedback untuk state terpilih/tidak terpilih
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param month Objek MonthYear yang direpresentasikan
+ * @param isSelected Boolean status seleksi
+ * @param onSelected Callback ketika chip dipilih
+ */
+
 @Composable
 fun MonthChip(
     month: MonthYear,
@@ -168,8 +212,8 @@ fun MonthChip(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) Color(0xFF388E3C)
-                else Color(0xFFF5F5F5)
+                if (isSelected) Color(0xFF388E3C) // Hijau ketika dipilih
+                else Color(0xFFF5F5F5) // Abu-abu terang ketika tidak dipilih
             )
             .clickable { onSelected(month) }
             .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -182,6 +226,20 @@ fun MonthChip(
     }
 }
 
+/**
+ * WEEK RANGE CHIP COMPOSABLE
+ *
+ * Tujuan:
+ * - Merepresentasikan rentang mingguan dalam bentuk chip
+ * - Menampilkan label tanggal yang user-friendly
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param dateRange Objek DateRange yang direpresentasikan
+ * @param isSelected Boolean status seleksi
+ * @param onSelected Callback ketika chip dipilih
+ */
+
 @Composable
 fun WeekRangeChip(
     dateRange: DateRange,
@@ -193,8 +251,8 @@ fun WeekRangeChip(
             .width(120.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isSelected) Color(0xFF4CAF50)
-                else Color(0xFFE8F5E9)
+                if (isSelected) Color(0xFF4CAF50) // Hijau lebih terang ketika dipilih
+                else Color(0xFFE8F5E9) // Hijau sangat terang ketika tidak dipilih
             )
             .clickable { onSelected(dateRange) }
             .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -209,7 +267,20 @@ fun WeekRangeChip(
     }
 }
 
-// Custom Filter Chip untuk Custom Date Range
+/**
+ * CUSTOM DATE RANGE CHIP COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan opsi pemilihan rentang tanggal kustom
+ * - Mengintegrasikan dengan date picker system
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param isSelected Boolean status seleksi
+ * @param customDateRange Rentang tanggal kustom
+ * @param onClick Callback ketika chip diklik
+ */
+
 @Composable
 fun CustomDateRangeChip(
     isSelected: Boolean,

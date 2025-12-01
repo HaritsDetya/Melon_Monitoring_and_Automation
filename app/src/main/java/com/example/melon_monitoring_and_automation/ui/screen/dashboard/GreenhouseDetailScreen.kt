@@ -57,6 +57,30 @@ import com.example.melon_monitoring_and_automation.ui.viewmodel.ChartViewModel
 import com.example.melon_monitoring_and_automation.ui.viewmodel.GreenhouseViewModel
 import kotlinx.coroutines.delay
 
+/**
+ * GREENHOUSE DETAIL SCREEN COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan informasi detail lengkap tentang greenhouse tertentu
+ * - Menyediakan data sensor terkini dalam format tabel
+ * - Menampilkan grafik data historis dengan berbagai filter options
+ * - Memungkinkan analisis trend data sensor over time
+ *
+ * Fitur:
+ * - Greenhouse information section (nama, lokasi, deskripsi)
+ * - Current sensor readings dalam format tabel
+ * - Interactive charts dengan multiple sensor types
+ * - Time range filters (24 jam, 7 hari, 30 hari, custom)
+ * - Date range picker untuk custom time selection
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouseId ID greenhouse yang akan ditampilkan detailnya
+ * @param onBackClick Callback untuk navigasi kembali
+ * @param viewModel ViewModel untuk data greenhouse
+ * @requires Android O (API 26) untuk date/time operations
+ */
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,14 +89,16 @@ fun GreenhouseDetailScreen(
     onBackClick: () -> Unit,
     viewModel: GreenhouseViewModel = hiltViewModel()
 ) {
+    // STATE COLLECTION - Collect state dari ViewModel
     val greenhouse by viewModel.getGreenhouseById(greenhouseId).collectAsState(initial = null)
     val sensorReadings by viewModel.getLatestSensorReadings(greenhouseId).collectAsState(initial = null)
 
     val darkGreen = Color(0xFF2E7D32)
 
-    // Set status bar
+    // STATUS BAR CONFIGURATION
     SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
 
+    // MAIN SCAFFOLD LAYOUT
     Scaffold(
         topBar = {
             TopAppBar(
@@ -95,48 +121,79 @@ fun GreenhouseDetailScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Greenhouse Info Section
+            // GREENHOUSE INFO SECTION
             GreenhouseInfoSection(greenhouse)
 
-            // Current Sensor Readings
+            // CURRENT SENSOR READINGS SECTION
             SensorReadingsSection(sensorReadings)
 
-            // Chart Section
+            // CHART SECTION - Dengan delayed loading untuk prevent crash
             SensorChartSection(greenhouseId = greenhouseId)
         }
     }
 }
 
+/**
+ * GREENHOUSE INFO SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan informasi dasar greenhouse
+ * - Memberikan context tentang greenhouse yang sedang dilihat
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouse Objek greenhouse, atau null jika sedang loading
+ */
+
 @Composable
 fun GreenhouseInfoSection(greenhouse: com.example.melon_monitoring_and_automation.domain.model.Greenhouse?) {
-    greenhouse?.let {
+    greenhouse?.let { gh ->
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)) // Light green background
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                // GREENHOUSE NAME
                 Text(
-                    text = it.name,
+                    text = gh.name,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF388E3C),
+                    color = Color(0xFF388E3C), // Dark green
                     fontWeight = FontWeight.Bold
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // LOCATION
                 Text(
-                    text = "Lokasi: ${it.location}",
+                    text = "Lokasi: ${gh.location}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // DESCRIPTION (OPTIONAL)
                 Text(
-                    text = "Deskripsi: ${it.description ?: "Tidak ada deskripsi"}",
+                    text = "Deskripsi: ${gh.description ?: "Tidak ada deskripsi"}",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
     }
 }
+
+/**
+ * SENSOR READINGS SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan pembacaan sensor terkini dalam format tabel
+ * - Menyediakan quick overview semua parameter sensor
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param sensorReadings Data sensor terkini, atau null jika tidak tersedia
+ */
 
 @Composable
 fun SensorReadingsSection(sensorReadings: com.example.melon_monitoring_and_automation.domain.model.SensorReadings?) {
@@ -147,36 +204,52 @@ fun SensorReadingsSection(sensorReadings: com.example.melon_monitoring_and_autom
                 .padding(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                // SECTION TITLE
                 Text(
                     text = "Pembacaan Sensor Terkini",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF388E3C)
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Temperature
+                // TEMPERATURE READING
                 ReadingItem("Suhu Udara", readings.temperature?.toString() ?: "N/A", "°C")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Humidity
+                // HUMIDITY READING
                 ReadingItem("Kelembapan", readings.humidity?.toString() ?: "N/A", "%")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Water Temperature
+                // WATER TEMPERATURE READING
                 ReadingItem("Suhu Air", readings.waterTemp?.toString() ?: "N/A", "°C")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // pH
+                // PH READING
                 ReadingItem("pH", readings.ph?.toString() ?: "N/A", "pH")
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // TDS
+                // TDS READING
                 ReadingItem("TDS", readings.tds?.toString() ?: "N/A", "ppm")
             }
         }
     }
 }
+
+/**
+ * READING ITEM COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan satu baris data sensor dalam format label-value
+ * - Menyediakan format yang konsisten untuk semua sensor readings
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param label Nama parameter sensor
+ * @param value Nilai sensor (format string)
+ * @param unit Unit pengukuran
+ */
 
 @Composable
 fun ReadingItem(label: String, value: String, unit: String) {
@@ -193,14 +266,28 @@ fun ReadingItem(label: String, value: String, unit: String) {
     }
 }
 
+/**
+ * SENSOR CHART SECTION COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan grafik data sensor historis
+ * - Menyediakan interactive chart dengan berbagai filter options
+ * - Menggunakan delayed loading untuk prevent crash
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouseId ID greenhouse untuk memuat data chart
+ */
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SensorChartSection(
     greenhouseId: String
 ) {
+    // STATE MANAGEMENT - Kontrol kapan chart ditampilkan
     var showChart by remember { mutableStateOf(false) }
 
-    // Gunakan LaunchedEffect dengan delay untuk prevent immediate crash
+    // DELAYED LOADING EFFECT - Prevent immediate crash
     LaunchedEffect(greenhouseId) {
         delay(500) // Delay untuk memastikan screen sudah fully loaded
         showChart = true
@@ -210,37 +297,68 @@ fun SensorChartSection(
         if (showChart) {
             SafeChartImplementation(greenhouseId = greenhouseId)
         } else {
-            // Loading state
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            // LOADING STATE - Selama delay
+            ChartLoadingState()
         }
     }
 }
+
+/**
+ * CHART LOADING STATE COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI loading selama chart data dimuat
+ * - Memberikan feedback visual kepada user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
+@Composable
+private fun ChartLoadingState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+/**
+ * SAFE CHART IMPLEMENTATION COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan implementasi chart yang aman dengan error handling
+ * - Mengkoordinasikan semua komponen chart-related
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param greenhouseId ID greenhouse untuk memuat data
+ */
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun SafeChartImplementation(greenhouseId: String) {
     val viewModel: ChartViewModel = hiltViewModel()
+
+    // STATE COLLECTION - Dari ChartViewModel
     val chartData by viewModel.chartData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val chartConfig by viewModel.chartConfig.collectAsState()
 
-    // ✅ PERBAIKAN: Tambah state untuk date range picker
+    // DATE RANGE PICKER STATE
     val showDateRangePicker by viewModel.showDateRangePicker.collectAsState()
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val weeklyRanges by viewModel.weeklyRanges.collectAsState()
 
+    // LOCAL ERROR STATE
     var chartError by remember { mutableStateOf<String?>(null) }
 
-    // Load data dan available months
+    // LOAD CHART DATA EFFECT - Ketika configuration berubah
     LaunchedEffect(chartConfig.selectedSensorType, chartConfig.timeRange, chartConfig.customDateRange) {
         try {
             viewModel.loadChartData(greenhouseId)
@@ -249,13 +367,14 @@ private fun SafeChartImplementation(greenhouseId: String) {
         }
     }
 
+    // LOAD AVAILABLE MONTHS EFFECT - Pada initialization
     LaunchedEffect(Unit) {
         viewModel.loadAvailableMonths(greenhouseId)
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // ✅ PERBAIKAN: Update ChartControls dengan custom range
+            // CHART CONTROLS - Dengan filter options
             EnhancedChartControls(
                 selectedSensorType = chartConfig.selectedSensorType,
                 selectedTimeRange = chartConfig.timeRange,
@@ -265,7 +384,7 @@ private fun SafeChartImplementation(greenhouseId: String) {
                 onCustomRangeClicked = { viewModel.showDateRangePicker() }
             )
 
-            // Date Range Picker Overlay
+            // DATE RANGE PICKER OVERLAY
             DateRangePicker(
                 showDateRangePicker = showDateRangePicker,
                 availableMonths = availableMonths,
@@ -279,40 +398,130 @@ private fun SafeChartImplementation(greenhouseId: String) {
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            // Error messages dan chart content (sama seperti sebelumnya)
-            if (!errorMessage.isNullOrEmpty()) {
-                ErrorMessageCard(message = errorMessage!!) {
-                    viewModel.clearErrorMessage()
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            // ERROR MESSAGES HANDLING
+            ChartErrorHandling(
+                viewModelError = errorMessage,
+                localError = chartError,
+                onDismissViewModelError = { viewModel.clearErrorMessage() },
+                onDismissLocalError = { chartError = null }
+            )
 
-            if (!chartError.isNullOrEmpty()) {
-                ErrorMessageCard(message = chartError!!) {
-                    chartError = null
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            if (isLoading) {
-                LoadingChartPlaceholder()
-            } else if (!chartError.isNullOrEmpty()) {
-                ChartErrorFallback(errorMessage = chartError!!, dataSize = chartData.size)
-            } else if (chartData.isEmpty()) {
-                EmptyChartPlaceholder()
-            } else {
-                SafeSensorLineChart(
-                    dataPoints = chartData,
-                    yAxisLabel = viewModel.getYAxisLabel(),
-                    chartTitle = viewModel.getChartTitle(),
-                    onError = { error -> chartError = error }
-                )
-            }
+            // CHART CONTENT - Berdasarkan state current
+            ChartContent(
+                isLoading = isLoading,
+                chartError = chartError,
+                chartData = chartData,
+                viewModel = viewModel,
+                onError = { error -> chartError = error }
+            )
         }
     }
 }
 
-// ✅ PERBAIKAN: Enhanced Chart Controls dengan custom range
+/**
+ * CHART ERROR HANDLING COMPOSABLE
+ *
+ * Tujuan:
+ * - Menangani penampilan error messages dari berbagai sumber
+ * - Menyediakan unified error handling untuk chart system
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param viewModelError Error dari ViewModel
+ * @param localError Error lokal dari chart rendering
+ * @param onDismissViewModelError Callback untuk dismiss ViewModel error
+ * @param onDismissLocalError Callback untuk dismiss local error
+ */
+
+@Composable
+private fun ChartErrorHandling(
+    viewModelError: String?,
+    localError: String?,
+    onDismissViewModelError: () -> Unit,
+    onDismissLocalError: () -> Unit
+) {
+    if (!viewModelError.isNullOrEmpty()) {
+        ErrorMessageCard(message = viewModelError!!) {
+            onDismissViewModelError()
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (!localError.isNullOrEmpty()) {
+        ErrorMessageCard(message = localError!!) {
+            onDismissLocalError()
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+/**
+ * CHART CONTENT COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan konten chart berdasarkan state current
+ * - Menangani semua possible states (loading, error, empty, success)
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param isLoading Boolean status loading data
+ * @param chartError Error message lokal
+ * @param chartData List data points untuk chart
+ * @param viewModel ChartViewModel untuk mendapatkan label dan title
+ * @param onError Callback untuk menangani error selama rendering
+ */
+
+@Composable
+private fun ChartContent(
+    isLoading: Boolean,
+    chartError: String?,
+    chartData: List<ChartDataPoint>,
+    viewModel: ChartViewModel,
+    onError: (String) -> Unit
+) {
+    when {
+        isLoading -> {
+            LoadingChartPlaceholder()
+        }
+        !chartError.isNullOrEmpty() -> {
+            ChartErrorFallback(errorMessage = chartError!!, dataSize = chartData.size)
+        }
+        chartData.isEmpty() -> {
+            EmptyChartPlaceholder()
+        }
+        else -> {
+            SafeSensorLineChart(
+                dataPoints = chartData,
+                yAxisLabel = viewModel.getYAxisLabel(),
+                chartTitle = viewModel.getChartTitle(),
+                onError = onError
+            )
+        }
+    }
+}
+
+/**
+ * ENHANCED CHART CONTROLS COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan controls untuk filter dan konfigurasi chart
+ * - Memungkinkan user untuk memilih sensor type dan time range
+ *
+ * Fitur:
+ * - Sensor type selection (suhu, kelembapan, pH, TDS, suhu air)
+ * - Time range selection (24 jam, 7 hari, 30 hari, custom)
+ * - Custom date range picker integration
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param selectedSensorType Sensor type yang sedang dipilih
+ * @param selectedTimeRange Time range yang sedang dipilih
+ * @param customDateRange Custom date range yang aktif
+ * @param onSensorTypeChanged Callback ketika sensor type berubah
+ * @param onTimeRangeChanged Callback ketika time range berubah
+ * @param onCustomRangeClicked Callback untuk membuka date range picker
+ */
+
 @Composable
 fun EnhancedChartControls(
     selectedSensorType: SensorType,
@@ -327,6 +536,7 @@ fun EnhancedChartControls(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
+        // SECTION TITLE
         Text(
             "Grafik Sensor",
             style = MaterialTheme.typography.titleMedium,
@@ -334,7 +544,7 @@ fun EnhancedChartControls(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // Sensor Type Filter
+        // SENSOR TYPE FILTER
         Text(
             "Jenis Sensor:",
             style = MaterialTheme.typography.bodySmall,
@@ -353,14 +563,14 @@ fun EnhancedChartControls(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Time Range Filter dengan Custom Option
+        // TIME RANGE FILTER DENGAN CUSTOM OPTION
         Text(
             "Rentang Waktu:",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         Row(modifier = Modifier.fillMaxWidth()) {
-            // Predefined ranges
+            // PREDEFINED RANGES (exclude CUSTOM)
             TimeRange.entries.forEach { timeRange ->
                 if (timeRange != TimeRange.CUSTOM) {
                     FilterChip(
@@ -376,7 +586,7 @@ fun EnhancedChartControls(
                 }
             }
 
-            // Custom range chip
+            // CUSTOM RANGE CHIP
             CustomDateRangeChip(
                 isSelected = selectedTimeRange == TimeRange.CUSTOM,
                 customDateRange = customDateRange,
@@ -384,7 +594,7 @@ fun EnhancedChartControls(
             )
         }
 
-        // ✅ PERBAIKAN: Tampilkan info custom range yang aktif
+        // CUSTOM RANGE INFO - Tampilkan info custom range yang aktif
         if (selectedTimeRange == TimeRange.CUSTOM && customDateRange != null) {
             Text(
                 text = "Rentang kustom: ${customDateRange.label}",
@@ -396,7 +606,22 @@ fun EnhancedChartControls(
     }
 }
 
-// 🔹 COMPOSABLE YANG AMAN dengan validation internal
+/**
+ * SAFE SENSOR LINE CHART COMPOSABLE
+ *
+ * Tujuan:
+ * - Menyediakan wrapper aman untuk SensorLineChart dengan validasi data
+ * - Mencegah crash ketika data tidak valid atau error terjadi
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param dataPoints Data points untuk chart
+ * @param yAxisLabel Label untuk sumbu Y
+ * @param chartTitle Judul chart
+ * @param onError Callback untuk menangani error
+ * @param modifier Modifier untuk kustomisasi layout
+ */
+
 @Composable
 fun SafeSensorLineChart(
     dataPoints: List<ChartDataPoint>,
@@ -405,7 +630,7 @@ fun SafeSensorLineChart(
     onError: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Validasi data sebelum render
+    // DATA VALIDATION - Filter out invalid data sebelum render
     val safeDataPoints = remember(dataPoints) {
         if (dataPoints.any { it.y.isNaN() || it.y.isInfinite() }) {
             onError("Data chart mengandung nilai tidak valid")
@@ -427,14 +652,26 @@ fun SafeSensorLineChart(
     }
 }
 
-// 🔹 COMPONENT UNTUK ERROR MESSAGE
+/**
+ * ERROR MESSAGE CARD COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan error message dalam format card yang konsisten
+ * - Menyediakan dismiss functionality untuk user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param message Pesan error yang akan ditampilkan
+ * @param onDismiss Callback ketika error di-dismiss
+ */
+
 @Composable
 fun ErrorMessageCard(message: String, onDismiss: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2)) // Light red background
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -447,13 +684,23 @@ fun ErrorMessageCard(message: String, onDismiss: () -> Unit) {
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
+                Icon(Icons.Default.Close, contentDescription = "Close error message")
             }
         }
     }
 }
 
-// 🔹 COMPONENT UNTUK LOADING STATE
+/**
+ * LOADING CHART PLACEHOLDER COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI loading selama chart data dimuat
+ * - Memberikan feedback visual yang konsisten
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
 @Composable
 fun LoadingChartPlaceholder() {
     Box(
@@ -470,7 +717,19 @@ fun LoadingChartPlaceholder() {
     }
 }
 
-// 🔹 COMPONENT UNTUK ERROR FALLBACK
+/**
+ * CHART ERROR FALLBACK COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI fallback ketika chart gagal dirender
+ * - Memberikan informasi error yang informatif kepada user
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param errorMessage Pesan error yang akan ditampilkan
+ * @param dataSize Jumlah data points yang tersedia
+ */
+
 @Composable
 fun ChartErrorFallback(errorMessage: String, dataSize: Int) {
     Box(
@@ -478,7 +737,7 @@ fun ChartErrorFallback(errorMessage: String, dataSize: Int) {
             .fillMaxWidth()
             .height(300.dp)
             .padding(16.dp)
-            .background(Color(0xFFF5F5F5)),
+            .background(Color(0xFFF5F5F5)), // Light gray background
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -488,14 +747,14 @@ fun ChartErrorFallback(errorMessage: String, dataSize: Int) {
             Icon(
                 Icons.Default.Warning,
                 contentDescription = "Error",
-                tint = Color(0xFFFF9800),
+                tint = Color(0xFFFF9800), // Orange
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "Chart Tidak Dapat Ditampilkan",
                 style = MaterialTheme.typography.titleSmall,
-                color = Color(0xFF757575)
+                color = Color(0xFF757575) // Gray
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -514,7 +773,14 @@ fun ChartErrorFallback(errorMessage: String, dataSize: Int) {
     }
 }
 
-// Helper functions
+// ============ HELPER FUNCTIONS ============
+
+/**
+ * Mendapatkan display name untuk SensorType.
+ *
+ * @param sensorType Jenis sensor
+ * @return String nama yang user-friendly
+ */
 private fun getSensorTypeDisplayName(sensorType: SensorType): String {
     return when (sensorType) {
         SensorType.TEMPERATURE -> "Suhu"
@@ -525,6 +791,13 @@ private fun getSensorTypeDisplayName(sensorType: SensorType): String {
     }
 }
 
+/**
+ * Mendapatkan display name untuk TimeRange.
+ *
+ * @param timeRange Rentang waktu
+ * @param customDateRange Custom date range (opsional)
+ * @return String nama yang user-friendly
+ */
 private fun getTimeRangeDisplayName(timeRange: TimeRange, customDateRange: DateRange? = null): String {
     return when (timeRange) {
         TimeRange.HOURS_24 -> "24 Jam"
@@ -535,6 +808,17 @@ private fun getTimeRangeDisplayName(timeRange: TimeRange, customDateRange: DateR
         } ?: "Rentang Kustom"
     }
 }
+
+/**
+ * EMPTY CHART PLACEHOLDER COMPOSABLE
+ *
+ * Tujuan:
+ * - Menampilkan UI ketika tidak ada data chart yang tersedia
+ * - Memberikan feedback yang jelas tentang empty state
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
 
 @Composable
 fun EmptyChartPlaceholder() {
@@ -553,21 +837,21 @@ fun EmptyChartPlaceholder() {
             Icon(
                 imageVector = Icons.Outlined.Build,
                 contentDescription = "Empty Chart",
-                tint = Color(0xFF9E9E9E),
+                tint = Color(0xFF9E9E9E), // Gray
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "Tidak Ada Data",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFF757575),
+                color = Color(0xFF757575), // Gray
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "Tidak ada data sensor yang tersedia\nuntuk rentang waktu yang dipilih",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF9E9E9E),
+                color = Color(0xFF9E9E9E), // Light gray
                 textAlign = TextAlign.Center
             )
         }

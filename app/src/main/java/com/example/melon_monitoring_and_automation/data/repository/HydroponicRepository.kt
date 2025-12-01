@@ -1,3 +1,30 @@
+/**
+ * HYDROPONIC REPOSITORY - DATA ACCESS LAYER
+ *
+ * Tujuan:
+ * - Menyediakan abstraction layer untuk semua data operations
+ * - Mengelola komunikasi antara domain layer dan network layer
+ * - Menangani business logic untuk data manipulation
+ * - Mengelola authentication, greenhouse, sensor, dan device operations
+ *
+ * Architecture:
+ * - Repository Pattern dengan clean separation of concerns
+ * - Coroutines untuk async operations
+ * - NetworkResult untuk standardized error handling
+ * - Supabase integration untuk backend operations
+ *
+ * Features:
+ * - User Authentication (Sign Up, Sign In, Delete Account)
+ * - Greenhouse Management (CRUD operations)
+ * - Sensor Data Operations (Real-time dan Historical)
+ * - Device Control (Automation, Control Devices)
+ * - Real-time Updates dengan Supabase Realtime
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @param context Android Context untuk system operations
+ */
+
 package com.example.melon_monitoring_and_automation.data.repository
 
 import android.content.Context
@@ -8,7 +35,12 @@ import com.example.melon_monitoring_and_automation.data.network.NetworkResult
 import com.example.melon_monitoring_and_automation.data.network.SupabaseManager
 import com.example.melon_monitoring_and_automation.domain.model.AutomationSettings
 import com.example.melon_monitoring_and_automation.domain.model.ControlDevices
+import com.example.melon_monitoring_and_automation.domain.model.DeviceCommand
+import com.example.melon_monitoring_and_automation.domain.model.DeviceStatusUpdate
+import com.example.melon_monitoring_and_automation.domain.model.DeviceTelemetryData
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
+import com.example.melon_monitoring_and_automation.domain.model.IoTDevice
+import com.example.melon_monitoring_and_automation.domain.model.SendDeviceCommand
 import com.example.melon_monitoring_and_automation.domain.model.SensorHistory
 import com.example.melon_monitoring_and_automation.domain.model.SensorReadings
 import com.example.melon_monitoring_and_automation.domain.model.SensorType
@@ -44,10 +76,21 @@ class HydroponicRepository(
     private val context: Context
 ) {
 
+    // DEPENDENCY INJECTION - API Service dan Supabase Client
     private val apiService = ApiService(SupabaseManager.client.postgrest)
     private val supabaseClient = SupabaseManager.client
 
-    // 🔹 Register user - COMPREHENSIVE FIX
+    /**
+     * SIGN UP WITH EMAIL
+     * Mendaftarkan user baru dengan email dan password
+     * Comprehensive process dengan multiple validation steps
+     *
+     * @param username Username untuk user baru
+     * @param email Email address untuk registrasi
+     * @param password Password untuk akun baru
+     * @param phoneNumber Nomor telepon user
+     * @return Result<User> dengan user data atau exception
+     */
     suspend fun signUpWithEmail(
         username: String,
         email: String,
@@ -57,7 +100,7 @@ class HydroponicRepository(
         try {
             println("🔹 [REPO] Starting registration for: $email")
 
-            // Step 1: Sign up user
+            // STEP 1: Sign up user dengan Supabase Auth
             val authResult = SupabaseManager.client.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
@@ -65,8 +108,8 @@ class HydroponicRepository(
 
             println("🔹 [REPO] Auth result: $authResult")
 
-            // Step 2: Wait and get current user
-            delay(1000) // Important: Wait for auth to complete
+            // STEP 2: Wait untuk memastikan auth process completed
+            delay(1000)
 
             val currentUser = SupabaseManager.client.auth.currentUserOrNull()
             println("🔹 [REPO] Current user after signup: $currentUser")
@@ -78,7 +121,7 @@ class HydroponicRepository(
             val userIdString = currentUser.id
             println("🔹 [REPO] User ID: $userIdString")
 
-            // Step 3: Create and save user profile
+            // STEP 3: Create user profile object
             val newUser = User(
                 id = userIdString,
                 username = username,
@@ -89,10 +132,10 @@ class HydroponicRepository(
 
             println("🔹 [REPO] Saving user to database: $newUser")
 
-            // Insert user profile
+            // STEP 4: Insert user profile ke database
             SupabaseManager.client.postgrest["users"].insert(newUser)
 
-            // Step 4: Verify the user was saved with phone number
+            // STEP 5: Verify user was saved dengan phone number
             val savedUser = try {
                 SupabaseManager.client.postgrest["users"]
                     .select {
@@ -107,7 +150,7 @@ class HydroponicRepository(
             println("🔹 [REPO] User saved successfully: $savedUser")
             println("🔹 [REPO] Phone number in saved user: ${savedUser.phoneNumber}")
 
-            // Step 5: Verify authentication session
+            // STEP 6: Verify authentication session
             val session = SupabaseManager.client.auth.currentSessionOrNull()
             println("🔹 [REPO] Current session: $session")
 
@@ -124,13 +167,21 @@ class HydroponicRepository(
         }
     }
 
-    // 📁 data/repository/HydroponicRepository.kt - PERBAIKAN LOGIN
+    /**
+     * SIGN IN WITH EMAIL
+     * Authentikasi user dengan email dan password
+     * Simplified approach tanpa timeout untuk better reliability
+     *
+     * @param email Email address user
+     * @param password Password user
+     * @return Result<User> dengan user profile atau exception
+     */
     suspend fun signInWithEmail(email: String, password: String): Result<User> =
         withContext(Dispatchers.IO) {
             try {
                 println("🔹 [REPO] Starting login for: $email")
 
-                // 🔹 HAPUS withTimeout - biarkan menggunakan default timeout Supabase
+                // STEP 1: Sign in dengan Supabase Auth
                 val authResult = SupabaseManager.client.auth.signInWith(Email) {
                     this.email = email
                     this.password = password
@@ -138,7 +189,7 @@ class HydroponicRepository(
 
                 println("🔹 [REPO] Auth signin completed")
 
-                // Tunggu sebentar untuk memastikan auth selesai
+                // STEP 2: Wait untuk memastikan auth process completed
                 delay(500)
 
                 val currentSession = SupabaseManager.client.auth.currentSessionOrNull()
@@ -158,7 +209,7 @@ class HydroponicRepository(
                 val userIdString = currentUser.id
                 println("🔹 [REPO] User ID: $userIdString")
 
-                // Ambil profil user
+                // STEP 3: Ambil user profile dari database
                 val userProfile = SupabaseManager.client.postgrest["users"]
                     .select {
                         filter { eq("id", userIdString) }
@@ -175,6 +226,13 @@ class HydroponicRepository(
             }
         }
 
+    /**
+     * DELETE USER ACCOUNT
+     * Menghapus akun user secara permanen menggunakan Edge Function
+     * Secure process dengan admin secret validation
+     *
+     * @return NetworkResult<Boolean> dengan status deletion
+     */
     suspend fun deleteUserAccount(): NetworkResult<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
@@ -242,7 +300,11 @@ class HydroponicRepository(
         }
     }
 
-    // 🔹 Clear cache - FIXED
+    /**
+     * CLEAR LOCAL CACHE
+     * Membersihkan semua cached data dan session
+     * Digunakan saat logout atau account deletion
+     */
     suspend fun clearLocalCache() = withContext(Dispatchers.IO) {
         try {
             println("🔹 [REPO] Clearing local cache")
@@ -265,6 +327,13 @@ class HydroponicRepository(
         }
     }
 
+    /**
+     * GET CURRENT USER
+     * Mengambil data user yang sedang login
+     * Combines auth user dengan profile data dari database
+     *
+     * @return User object atau null jika tidak ada user yang login
+     */
     suspend fun getCurrentUser(): User? {
         return try {
             println("🔹 [REPO] Getting current user...")
@@ -297,7 +366,14 @@ class HydroponicRepository(
         }
     }
 
-    // Di HydroponicRepository - PERBAIKAN COMPLETE
+    /**
+     * UPDATE AUTOMATION SETTINGS
+     * Mengupdate settings automation untuk greenhouse tertentu
+     * Idempotent operation - handles both create dan update
+     *
+     * @param settings AutomationSettings object dengan updated values
+     * @return NetworkResult dengan updated settings atau error
+     */
     suspend fun updateAutomationSettings(settings: AutomationSettings): NetworkResult<AutomationSettings> {
         return withContext(Dispatchers.IO) {
             try {
@@ -351,7 +427,13 @@ class HydroponicRepository(
         }
     }
 
-    // Helper method untuk insert settings
+    /**
+     * TRY INSERT SETTINGS - Helper Method
+     * Internal helper untuk insert new automation settings
+     *
+     * @param settings AutomationSettings untuk di-insert
+     * @return NetworkResult dengan inserted settings
+     */
     private suspend fun tryInsertSettings(settings: AutomationSettings): NetworkResult<AutomationSettings> {
         return try {
             println("🔹 [REPO] Inserting new automation settings...")
@@ -370,7 +452,13 @@ class HydroponicRepository(
         }
     }
 
-    // Di HydroponicRepository - PERBAIKAN GET METHOD
+    /**
+     * GET AUTOMATION SETTINGS
+     * Mengambil automation settings untuk greenhouse tertentu
+     *
+     * @param greenhouseId ID greenhouse target
+     * @return NetworkResult dengan settings atau null jika tidak ada
+     */
     suspend fun getAutomationSettings(greenhouseId: String): NetworkResult<AutomationSettings?> {
         return withContext(Dispatchers.IO) {
             try {
@@ -396,7 +484,13 @@ class HydroponicRepository(
         }
     }
 
-    // Method untuk create automation settings - PERBAIKAN
+    /**
+     * CREATE AUTOMATION SETTINGS
+     * Membuat automation settings default untuk greenhouse baru
+     *
+     * @param greenhouseId ID greenhouse untuk settings baru
+     * @return NetworkResult dengan created settings
+     */
     suspend fun createAutomationSettings(greenhouseId: String): NetworkResult<AutomationSettings> {
         return withContext(Dispatchers.IO) {
             try {
@@ -426,16 +520,39 @@ class HydroponicRepository(
         }
     }
 
-    // 🔹 Ambil semua greenhouse milik user
+    /**
+     * GET USER GREENHOUSES
+     * Mengambil semua greenhouse yang dimiliki oleh user
+     * Delegate ke ApiService untuk actual implementation
+     *
+     * @param userId ID user pemilik greenhouse
+     * @return NetworkResult dengan list of greenhouses
+     */
     suspend fun getUserGreenhouses(userId: String): NetworkResult<List<Greenhouse>> {
         return apiService.getGreenhousesByUser(userId)
     }
 
-    // 🔹 Ambil data sensor terbaru
+    /**
+     * GET LATEST SENSOR DATA
+     * Mengambil pembacaan sensor terbaru untuk greenhouse
+     * Delegate ke ApiService untuk actual implementation
+     *
+     * @param greenhouseId ID greenhouse target
+     * @return NetworkResult dengan latest sensor readings atau null
+     */
     suspend fun getLatestSensorData(greenhouseId: String): NetworkResult<SensorReadings?> {
         return apiService.getLatestSensorReading(greenhouseId)
     }
 
+    /**
+     * GET SENSOR HISTORY
+     * Mengambil historical sensor data untuk chart visualization
+     *
+     * @param greenhouseId ID greenhouse target
+     * @param sensorType Jenis sensor (Temperature, Humidity, dll)
+     * @param hours Jumlah jam history yang diambil
+     * @return NetworkResult dengan list of sensor history
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun getSensorHistory(
         greenhouseId: String,
@@ -477,17 +594,38 @@ class HydroponicRepository(
         }
     }
 
-    // 🔹 Ambil status kontrol perangkat (fan, pump, dll)
+    /**
+     * GET CONTROL DEVICE
+     * Mengambil status control device untuk greenhouse
+     * Delegate ke ApiService untuk actual implementation
+     *
+     * @param greenhouseId ID greenhouse target
+     * @return NetworkResult dengan control device atau null
+     */
     suspend fun getControlDevice(greenhouseId: String): NetworkResult<ControlDevices?> {
         return apiService.getControlDevice(greenhouseId)
     }
 
-    // 🔹 Create control device if not exists
+    /**
+     * CREATE CONTROL DEVICE IF NOT EXISTS
+     * Membuat control device entry jika belum ada
+     * Idempotent operation - safe untuk multiple calls
+     *
+     * @param greenhouseId ID greenhouse untuk device baru
+     * @return NetworkResult dengan created atau existing device
+     */
     suspend fun createControlDeviceIfNotExists(greenhouseId: String): NetworkResult<ControlDevices> {
         return apiService.createControlDeviceIfNotExists(greenhouseId)
     }
 
-    // --- 🔹 Realtime Control Device Updates - FIXED (coroutine issue) ---
+    /**
+     * GET REALTIME DEVICE UPDATES
+     * Membuat Flow untuk real-time device updates
+     * Menggunakan Supabase Realtime untuk live updates
+     *
+     * @param greenhouseId ID greenhouse untuk subscribe updates
+     * @return Flow<ControlDevices?> dengan real-time updates
+     */
     fun getRealtimeDeviceUpdates(greenhouseId: String): Flow<ControlDevices?> = callbackFlow {
         val channel = supabaseClient.realtime.channel("device_updates_$greenhouseId")
 
@@ -521,7 +659,13 @@ class HydroponicRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    // 🔹 Update kontrol perangkat - ✅ FIXED
+    /**
+     * UPDATE DEVICE CONTROL
+     * Mengupdate status control device (fan, pump, auto mode)
+     *
+     * @param device ControlDevices object dengan updated values
+     * @return NetworkResult dengan boolean success status
+     */
     suspend fun updateDeviceControl(device: ControlDevices): NetworkResult<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
@@ -546,7 +690,17 @@ class HydroponicRepository(
         }
     }
 
-    // Tambahkan method baru di repository
+    /**
+     * GET SENSOR HISTORY BY DATE RANGE
+     * Mengambil sensor history berdasarkan range tanggal spesifik
+     * Untuk advanced chart filtering dan analysis
+     *
+     * @param greenhouseId ID greenhouse target
+     * @param sensorType Jenis sensor yang di-query
+     * @param startDate Start timestamp dalam milliseconds
+     * @param endDate End timestamp dalam milliseconds
+     * @return NetworkResult dengan filtered sensor history
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun getSensorHistoryByDateRange(
         greenhouseId: String,
@@ -584,6 +738,303 @@ class HydroponicRepository(
             } catch (e: Exception) {
                 println("🔹 [REPO] Error fetching date range history: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to fetch date range history")
+            }
+        }
+    }
+
+    /**
+     * IOT DEVICES MANAGEMENT
+     * Fungsi-fungsi untuk mengelola perangkat IoT
+     */
+
+    /**
+     * GET IOT DEVICES BY GREENHOUSE
+     * Mengambil semua device IoT yang terhubung dengan greenhouse
+     *
+     * @param greenhouseId ID greenhouse target
+     * @return NetworkResult dengan list of IoT devices
+     */
+    suspend fun getIoTDevicesByGreenhouse(greenhouseId: String): NetworkResult<List<IoTDevice>> {
+        return apiService.getIoTDevicesByGreenhouse(greenhouseId)
+    }
+
+    /**
+     * GET IOT DEVICE BY ID
+     * Mengambil detail device IoT berdasarkan ID
+     *
+     * @param deviceId ID device target
+     * @return NetworkResult dengan IoT device atau null
+     */
+    suspend fun getIoTDeviceById(deviceId: String): NetworkResult<IoTDevice?> {
+        return apiService.getIoTDeviceById(deviceId)
+    }
+
+    /**
+     * PAIR IOT DEVICE
+     * Melakukan pairing device IoT dengan greenhouse
+     *
+     * @param deviceId ID device yang akan dipair
+     * @param greenhouseId ID greenhouse target
+     * @param pairingCode Kode pairing untuk verifikasi
+     * @return NetworkResult dengan paired device
+     */
+    suspend fun pairIoTDevice(
+        deviceId: String,
+        greenhouseId: String,
+        pairingCode: String
+    ): NetworkResult<IoTDevice> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Pairing device: $deviceId with greenhouse: $greenhouseId")
+
+                val result = apiService.pairIoTDevice(deviceId, greenhouseId, pairingCode)
+
+                if (result is NetworkResult.Success) {
+                    println("🔹 [REPO] Device paired successfully: ${result.data.deviceName}")
+                } else {
+                    println("🔹 [REPO] Device pairing failed: ${(result as NetworkResult.Error).message}")
+                }
+
+                result
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error pairing device: ${e.message}")
+                NetworkResult.Error("Failed to pair device: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * UNPAIR IOT DEVICE
+     * Melepas pairing device IoT dari greenhouse
+     *
+     * @param deviceId ID device yang akan dilepas
+     * @return NetworkResult dengan unpaired device
+     */
+    suspend fun unpairIoTDevice(deviceId: String): NetworkResult<IoTDevice> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Unpairing device: $deviceId")
+
+                val result = apiService.unpairIoTDevice(deviceId)
+
+                if (result is NetworkResult.Success) {
+                    println("🔹 [REPO] Device unpaired successfully")
+                }
+
+                result
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error unpairing device: ${e.message}")
+                NetworkResult.Error("Failed to unpair device: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * UPDATE DEVICE STATUS
+     * Mengupdate status device (last_seen, firmware_version)
+     *
+     * @param deviceId ID device target
+     * @param firmwareVersion Versi firmware terbaru (optional)
+     * @return NetworkResult dengan updated device
+     */
+    suspend fun updateDeviceStatus(
+        deviceId: String,
+        firmwareVersion: String? = null
+    ): NetworkResult<IoTDevice> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Updating device status: $deviceId")
+
+                val statusUpdate = DeviceStatusUpdate(
+                    lastSeen = System.now().toString(),
+                    firmwareVersion = firmwareVersion
+                )
+
+                val result = apiService.updateDeviceStatus(deviceId, statusUpdate)
+
+                if (result is NetworkResult.Success) {
+                    println("🔹 [REPO] Device status updated successfully")
+                }
+
+                result
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error updating device status: ${e.message}")
+                NetworkResult.Error("Failed to update device status: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * SEND DEVICE COMMAND
+     * Mengirim perintah ke device IoT
+     *
+     * @param deviceId ID device target
+     * @param command Jenis perintah
+     * @param payload Data tambahan (optional)
+     * @return NetworkResult dengan created command
+     */
+    suspend fun sendDeviceCommand(
+        deviceId: String,
+        command: String,
+        payload: String? = null
+    ): NetworkResult<DeviceCommand> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Sending command to device: $deviceId - $command")
+
+                val commandData = SendDeviceCommand(
+                    deviceId = deviceId,
+                    command = command,
+                    payload = payload
+                )
+
+                val result = apiService.sendDeviceCommand(commandData)
+
+                if (result is NetworkResult.Success) {
+                    println("🔹 [REPO] Command sent successfully: ${result.data.id}")
+                }
+
+                result
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error sending device command: ${e.message}")
+                NetworkResult.Error("Failed to send device command: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * GET PENDING DEVICE COMMANDS
+     * Mengambil perintah yang belum dieksekusi untuk device
+     *
+     * @param deviceId ID device target
+     * @return NetworkResult dengan list of pending commands
+     */
+    suspend fun getPendingDeviceCommands(deviceId: String): NetworkResult<List<DeviceCommand>> {
+        return apiService.getPendingDeviceCommands(deviceId)
+    }
+
+    /**
+     * MARK COMMAND AS EXECUTED
+     * Menandai perintah device telah dieksekusi
+     *
+     * @param commandId ID command target
+     * @return NetworkResult dengan boolean success status
+     */
+    suspend fun markCommandAsExecuted(commandId: String): NetworkResult<Boolean> {
+        return apiService.markCommandAsExecuted(commandId)
+    }
+
+    /**
+     * GET REALTIME DEVICE TELEMETRY
+     * Membuat Flow untuk real-time device telemetry updates
+     * Menggunakan Supabase Realtime untuk live sensor data
+     *
+     * @param greenhouseId ID greenhouse untuk subscribe updates
+     * @return Flow<DeviceTelemetryData?> dengan real-time telemetry
+     */
+    fun getRealtimeDeviceTelemetry(greenhouseId: String): Flow<DeviceTelemetryData?> = callbackFlow {
+        val channel = supabaseClient.realtime.channel("telemetry_updates_$greenhouseId")
+
+        try {
+            channel.subscribe()
+
+            val flow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "sensor_readings" // atau tabel telemetry khusus jika ada
+                filter = "greenhouse_id=eq.$greenhouseId"
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+
+            val job = launch {
+                flow.collect { change ->
+                    try {
+                        val recordJson = change.record.toString()
+                        val telemetry = json.decodeFromString<DeviceTelemetryData>(recordJson)
+                        trySend(telemetry)
+                    } catch (e: Exception) {
+                        println("🔹 [REPO] Error decoding telemetry: ${e.message}")
+                        trySend(null)
+                    }
+                }
+            }
+
+            awaitClose {
+                job.cancel()
+            }
+        } catch (e: Exception) {
+            close(e)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * VALIDATE PAIRING CODE
+     * Memvalidasi kode pairing untuk device IoT
+     *
+     * @param deviceId ID device target
+     * @param pairingCode Kode pairing untuk divalidasi
+     * @return NetworkResult dengan boolean valid status
+     */
+    suspend fun validatePairingCode(deviceId: String, pairingCode: String): NetworkResult<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Validating pairing code for device: $deviceId")
+
+                val deviceResult = apiService.getIoTDeviceById(deviceId)
+
+                return@withContext when (deviceResult) {
+                    is NetworkResult.Success -> {
+                        if (deviceResult.data == null) {
+                            NetworkResult.Error("Device not found")
+                        } else if (deviceResult.data.pairingCode == pairingCode) {
+                            if (deviceResult.data.isPaired) {
+                                NetworkResult.Error("Device already paired")
+                            } else {
+                                NetworkResult.Success(true)
+                            }
+                        } else {
+                            NetworkResult.Error("Invalid pairing code")
+                        }
+                    }
+                    is NetworkResult.Error -> deviceResult
+                }
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error validating pairing code: ${e.message}")
+                NetworkResult.Error("Failed to validate pairing code: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * SCAN AND REGISTER DEVICE
+     * Mendaftarkan device baru ke sistem (untuk admin/setup)
+     *
+     * @param deviceData Data device baru
+     * @return NetworkResult dengan registered device
+     */
+    suspend fun scanAndRegisterDevice(deviceData: IoTDevice): NetworkResult<IoTDevice> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Registering new device: ${deviceData.deviceId}")
+
+                // Cek apakah device sudah terdaftar
+                val existingDevice = apiService.getIoTDeviceByDeviceId(deviceData.deviceId)
+
+                if (existingDevice is NetworkResult.Success && existingDevice.data != null) {
+                    return@withContext NetworkResult.Success(existingDevice.data)
+                }
+
+                // Insert device baru
+                val result: IoTDevice = SupabaseManager.client.postgrest["iot_devices"]
+                    .insert(deviceData) {
+                        select()
+                    }
+                    .decodeSingle()
+
+                println("🔹 [REPO] Device registered successfully: ${result.id}")
+                NetworkResult.Success(result)
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error registering device: ${e.message}")
+                NetworkResult.Error("Failed to register device: ${e.message}")
             }
         }
     }

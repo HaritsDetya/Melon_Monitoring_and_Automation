@@ -1,3 +1,27 @@
+/**
+ * MAIN APP COMPOSABLE - ROOT COMPONENT
+ *
+ * Tujuan:
+ * - Root component utama aplikasi yang mengatur navigation graph
+ * - Menangani deep link processing untuk reset password flow
+ * - Mengelola global state seperti authentication status
+ * - Mengatur system bars (status bar) untuk konsistensi UI
+ *
+ * Architecture:
+ * - Single Activity dengan Multiple Composable Screens
+ * - Nested Navigation Graphs untuk organized routing
+ * - State management dengan ViewModel dan Compose State
+ * - Deep link handling dengan Activity integration
+ *
+ * Navigation Structure:
+ * - Splash Screen (Initial)
+ * - Auth Graph (Login, Register, Reset Password)
+ * - Main App Graph (Dashboard, Control, Profile + Nested Screens)
+ *
+ * @author Your Name
+ * @since Version 1.0
+ */
+
 package com.example.melon_monitoring_and_automation
 
 import android.net.Uri
@@ -15,6 +39,7 @@ import com.example.melon_monitoring_and_automation.ui.navigation.Screen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.ResetPasswordScreen
+import com.example.melon_monitoring_and_automation.ui.screen.control.DeviceManagementScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.GreenhouseDetailScreen
 import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceListScreen
 import com.example.melon_monitoring_and_automation.ui.screen.pairing.DevicePairingScreen
@@ -27,24 +52,25 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun MainApp() {
+    // NAVIGATION & DEPENDENCY SETUP
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
     val context = LocalContext.current
     val activity = context as? MainActivity
 
+    // STATE MANAGEMENT - Collect state dari ViewModel
     val authSuccess by authViewModel.authSuccess.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val isLoading by authViewModel.isLoading.collectAsStateWithLifecycle()
 
+    // DEEP LINK STATE - Track processing status
     var hasProcessedDeepLink by remember { mutableStateOf(false) }
 
+    // UI CONFIGURATION - Global status bar color
     val darkGreen = Color(0xFF2E7D32)
-
-    // Set global status bar
     SetSystemBars(statusBarColor = darkGreen, darkIcons = false)
 
-
-    // 🔹 FIX: Enhanced initial app startup dengan session restoration
+    // APP INITIALIZATION - Setup awal aplikasi
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] 🚀 App starting...")
         authViewModel.enableAutoCheck()
@@ -52,7 +78,7 @@ fun MainApp() {
         println("🔹 [MAIN APP] ✅ App initialization completed")
     }
 
-    // 🔹 FIX: Enhanced deep link handling
+    // DEEP LINK PROCESSING - Handle initial deep links
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] 🚀 INITIAL DEEP LINK CHECK STARTED")
         delay(1000)
@@ -69,7 +95,7 @@ fun MainApp() {
         }
     }
 
-    // 🔹 FIX: Enhanced auth state handling
+    // AUTH STATE HANDLING - Redirect berdasarkan authentication status
     LaunchedEffect(authSuccess, currentUser, isLoading) {
         println("🔹 [MAIN APP] Auth State - Success: $authSuccess, User: ${currentUser?.email}, Loading: $isLoading")
 
@@ -77,6 +103,7 @@ fun MainApp() {
             val currentRoute = navController.currentBackStackEntry?.destination?.route
             println("🔹 [MAIN APP] Current Route: $currentRoute")
 
+            // Handle navigation berdasarkan auth status
             if (currentRoute == Screen.Splash.route || currentRoute?.startsWith("auth") == true) {
                 when {
                     authSuccess && currentUser != null -> {
@@ -96,7 +123,7 @@ fun MainApp() {
         }
     }
 
-    // 🔹 PERBAIKAN: Gunakan callback dari Activity untuk new deep links
+    // DEEP LINK LISTENER - Handle new deep links dari Activity
     DisposableEffect(activity) {
         val listener = {
             println("🔹 [MAIN APP] 📢 Activity notified new deep link!")
@@ -115,7 +142,7 @@ fun MainApp() {
         }
     }
 
-    // 🔹 FIX: Initial auth check yang lebih robust
+    // INITIAL AUTH CHECK - Check auth status saat app start
     LaunchedEffect(Unit) {
         println("🔹 [MAIN APP] Initializing app...")
         delay(1000)
@@ -123,17 +150,20 @@ fun MainApp() {
         authViewModel.checkAuthStatus()
     }
 
-    // 🔹 FIXED: Clean navigation graph
+    /**
+     * MAIN NAVIGATION GRAPH
+     * Struktur hierarchical navigation untuk organized routing
+     */
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
     ) {
-        // Splash Screen
+        // SPLASH SCREEN - Initial loading screen
         composable(Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
 
-        // Auth Navigation Graph
+        // AUTH NAVIGATION GRAPH - Authentication flow
         navigation(
             startDestination = Screen.Login.route,
             route = "auth_graph"
@@ -149,15 +179,23 @@ fun MainApp() {
             }
         }
 
+        // MAIN APP NAVIGATION GRAPH - Authenticated user flow
         navigation(
             startDestination = "main_tabs",
             route = "main_app_graph"
         ) {
+            // Main Tabs Screen dengan Bottom Navigation
             composable("main_tabs") {
                 MainAppScreen(navController = navController)
             }
 
-            // Greenhouse Detail
+            composable(Screen.DeviceManagement.route) {
+                DeviceManagementScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // GREENHOUSE DETAIL SCREEN - Detail monitoring untuk greenhouse spesifik
             composable("${Screen.GreenhouseDetail.route}/{greenhouseId}") { backStackEntry ->
                 val greenhouseId = backStackEntry.arguments?.getString("greenhouseId") ?: ""
                 GreenhouseDetailScreen(
@@ -166,11 +204,12 @@ fun MainApp() {
                 )
             }
 
-            // Change Password
+            // CHANGE PASSWORD SCREEN - Password management untuk logged-in user
             composable(Screen.ChangePassword.route) {
                 ChangePasswordScreen(navController = navController)
             }
 
+            // DEVICE SETUP GUIDE SCREEN - Petunjuk setup device IoT
             composable(Screen.DeviceSetupGuide.route) {
                 DeviceSetupGuideScreen(
                     onBackClick = { navController.popBackStack() },
@@ -180,6 +219,7 @@ fun MainApp() {
                 )
             }
 
+            // DEVICE PAIRING SCREEN - Proses pairing device dengan aplikasi
             composable(Screen.DevicePairing.route) {
                 DevicePairingScreen(
                     navController = navController,
@@ -192,6 +232,7 @@ fun MainApp() {
                 )
             }
 
+            // QR SCANNER SCREEN - Scan QR code untuk device pairing
             composable(Screen.QRScanner.route) {
                 QRScannerScreen(
                     onBackClick = { navController.popBackStack() },
@@ -205,6 +246,7 @@ fun MainApp() {
                 )
             }
 
+            // DEVICE LIST SCREEN - Daftar semua device yang terpair
             composable(Screen.DeviceList.route) {
                 DeviceListScreen(
                     navController = navController,
@@ -218,7 +260,15 @@ fun MainApp() {
     }
 }
 
-// 🔹 EKSTRAK: Fungsi helper untuk process deep link
+/**
+ * PROCESS DEEP LINK - Helper Function
+ * Memproses deep link untuk reset password flow
+ *
+ * @param pendingDeepLink URI deep link yang diterima
+ * @param navController Navigator untuk screen routing
+ * @param activity MainActivity instance untuk state management
+ * @param onProcessed Callback ketika processing selesai
+ */
 private fun processDeepLink(
     pendingDeepLink: Uri,
     navController: NavController,

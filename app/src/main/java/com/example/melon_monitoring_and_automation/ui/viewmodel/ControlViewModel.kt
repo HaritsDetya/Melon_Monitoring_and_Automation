@@ -19,36 +19,112 @@ import kotlinx.datetime.Instant
 import java.util.UUID
 import javax.inject.Inject
 
+/**
+ * CONTROL VIEWMODEL CLASS
+ *
+ * Tujuan:
+ * - Mengelola state dan business logic untuk control screen
+ * - Menangani komunikasi dengan repository untuk operasi perangkat
+ * - Mengkoordinasikan real-time updates dan automasi
+ *
+ * Responsibilities:
+ * - Load greenhouse data dan device settings
+ * - Handle device control operations (blower, pump, nutrient system)
+ * - Manage automation settings dan temperature monitoring
+ * - Provide real-time device status updates
+ * - Handle error states dan success feedback
+ *
+ * @author Your Name
+ * @since Version 1.0
+ * @property repository Repository untuk data hydroponic dan device control
+ */
+
 @HiltViewModel
 class ControlViewModel @Inject constructor(
     private val repository: HydroponicRepository
 ) : ViewModel() {
 
+    // ============ STATE FLOW DEFINITIONS ============
+
+    /**
+     * State flow untuk daftar greenhouse user.
+     *
+     * Di-load pada initialization dan di-update secara periodic.
+     */
     private val _greenhouses = MutableStateFlow<List<Greenhouse>>(emptyList())
     val greenhouses: StateFlow<List<Greenhouse>> = _greenhouses.asStateFlow()
 
+    /**
+     * State flow untuk kontrol perangkat per greenhouse.
+     *
+     * Structure: Map<GreenhouseId, ControlDevices>
+     * Menyimpan status real-time semua perangkat.
+     */
     private val _controlDevices = MutableStateFlow<Map<String, ControlDevices>>(emptyMap())
     val controlDevices: StateFlow<Map<String, ControlDevices>> = _controlDevices.asStateFlow()
 
+    /**
+     * State flow untuk pengaturan automasi per greenhouse.
+     *
+     * Structure: Map<GreenhouseId, AutomationSettings>
+     * Menyimpan threshold settings untuk automasi.
+     */
     private val _automationSettings = MutableStateFlow<Map<String, AutomationSettings>>(emptyMap())
     val automationSettings: StateFlow<Map<String, AutomationSettings>> = _automationSettings.asStateFlow()
 
+    /**
+     * State flow untuk loading state.
+     *
+     * True selama operasi network atau device control berlangsung.
+     */
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    /**
+     * State flow untuk error messages.
+     *
+     * Menyimpan pesan error untuk ditampilkan ke user.
+     * Dapat di-clear dengan clearErrorMessage().
+     */
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    /**
+     * State flow untuk update success status.
+     *
+     * True ketika operasi update berhasil, digunakan untuk show feedback.
+     */
     private val _updateSuccess = MutableStateFlow(false)
     val updateSuccess: StateFlow<Boolean> = _updateSuccess.asStateFlow()
 
-    // Realtime flows
+    // ============ REALTIME UPDATES MANAGEMENT ============
+
+    /**
+     * Map untuk menyimpan realtime update jobs per greenhouse.
+     *
+     * Digunakan untuk manage realtime subscriptions dan cleanup.
+     */
     private val realtimeChannels = mutableMapOf<String, Job>()
+
+    // ============ INITIALIZATION ============
 
     init {
         loadUserGreenhouses()
     }
 
+    // ============ DATA LOADING METHODS ============
+
+    /**
+     * Load user greenhouses dan associated device data.
+     *
+     * Flow:
+     * 1. Set loading state ke true
+     * 2. Get current user dari auth repository
+     * 3. Load user greenhouses
+     * 4. Untuk setiap greenhouse, load control devices dan automation settings
+     * 5. Setup realtime updates
+     * 6. Handle errors appropriately
+     */
     fun loadUserGreenhouses() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -80,6 +156,13 @@ class ControlViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Load control device untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-load device-nya
+     *
+     * Jika device tidak ditemukan, akan dibuat device baru.
+     */
     private fun loadControlDevice(greenhouseId: String) {
         viewModelScope.launch {
             when (val result = repository.getControlDevice(greenhouseId)) {
@@ -99,6 +182,13 @@ class ControlViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Load automation settings untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-load settings-nya
+     *
+     * Jika settings tidak ditemukan, akan dibuat settings default.
+     */
     private fun loadAutomationSettings(greenhouseId: String) {
         viewModelScope.launch {
             println("🔹 [CONTROL-VM] Loading automation settings for: $greenhouseId")
@@ -127,6 +217,18 @@ class ControlViewModel @Inject constructor(
         }
     }
 
+    // ============ DEVICE CREATION METHODS ============
+
+    /**
+     * Create automation settings default untuk greenhouse.
+     *
+     * @param greenhouseId ID greenhouse untuk create settings
+     *
+     * Default settings:
+     * - Max temperature: 38°C
+     * - Min temperature: 25°C
+     * - Nutrient droplets: 10
+     */
     private fun createAutomationSettings(greenhouseId: String) {
         viewModelScope.launch {
             println("🔹 [CONTROL-VM] Creating automation settings for: $greenhouseId")
@@ -157,6 +259,16 @@ class ControlViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Create control device default untuk greenhouse.
+     *
+     * @param greenhouseId ID greenhouse untuk create device
+     *
+     * Default device state:
+     * - Fan: false
+     * - Pump: false
+     * - Auto mode: false
+     */
     private fun createControlDevice(greenhouseId: String) {
         viewModelScope.launch {
             when (val result = repository.createControlDeviceIfNotExists(greenhouseId)) {
@@ -171,7 +283,22 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Toggle Blower (Fan)
+    // ============ DEVICE CONTROL METHODS ============
+
+    /**
+     * Toggle blower (fan) state untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-update
+     * @param enabled Status baru untuk blower (true = on, false = off)
+     *
+     * Flow:
+     * 1. Set loading state
+     * 2. Get current device state
+     * 3. Update device dengan new state
+     * 4. Send update ke repository
+     * 5. Update local state jika successful
+     * 6. Handle errors
+     */
     fun toggleBlower(greenhouseId: String, enabled: Boolean) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -199,7 +326,15 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Set Auto Mode
+    /**
+     * Set auto mode untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-update
+     * @param autoMode Status auto mode baru
+     *
+     * Jika switching ke auto mode, manual control akan dimatikan.
+     * Jika auto mode di-enable, temperature monitoring akan di-start.
+     */
     fun setAutoMode(greenhouseId: String, autoMode: Boolean) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -234,7 +369,12 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Set Nutrient Droplets
+    /**
+     * Set nutrient droplets count untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-update
+     * @param droplets Jumlah tetesan nutrisi per siklus (1-50)
+     */
     fun setNutrientDroplets(greenhouseId: String, droplets: Int) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -247,7 +387,7 @@ class ControlViewModel @Inject constructor(
                     updatedAt = System.now().toString()
                 )
 
-                // Update in repository (you'll need to add this method)
+                // Update in repository
                 when (val result = repository.updateAutomationSettings(updatedSettings)) {
                     is NetworkResult.Success -> {
                         _automationSettings.value = _automationSettings.value + (greenhouseId to updatedSettings)
@@ -263,39 +403,15 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Temperature Monitoring for Auto Mode
-    private fun startTemperatureMonitoring(greenhouseId: String) {
-        viewModelScope.launch {
-            // Get latest temperature readings
-            when (val result = repository.getLatestSensorData(greenhouseId)) {
-                is NetworkResult.Success -> {
-                    result.data?.temperature?.let { temperature ->
-                        val settings = _automationSettings.value[greenhouseId]
-                        val device = _controlDevices.value[greenhouseId]
-
-                        if (settings != null && device != null && device.autoMode) {
-                            val shouldTurnOnFan = temperature > settings.maxTemperature
-                            val shouldTurnOffFan = temperature < settings.minTemperature
-
-                            if (shouldTurnOnFan && !device.fan) {
-                                // Temperature too high, turn on fan
-                                toggleBlower(greenhouseId, true)
-                            } else if (shouldTurnOffFan && device.fan) {
-                                // Temperature normal, turn off fan
-                                toggleBlower(greenhouseId, false)
-                            }
-                        }
-                    }
-                }
-                is NetworkResult.Error -> {
-                    _errorMessage.value = "Gagal memantau suhu: ${result.message}"
-                }
-                else -> {}
-            }
-        }
-    }
-
-    // 🔹 Update Temperature Thresholds
+    /**
+     * Update temperature thresholds untuk automasi blower.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-update
+     * @param minTemperature Suhu minimum untuk mematikan blower
+     * @param maxTemperature Suhu maksimum untuk menyalakan blower
+     *
+     * Validasi: minTemperature harus < maxTemperature
+     */
     fun updateTemperatureThresholds(
         greenhouseId: String,
         minTemperature: Double,
@@ -346,7 +462,12 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Toggle Pump
+    /**
+     * Toggle main pump state untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-update
+     * @param enabled Status baru untuk pompa (true = on, false = off)
+     */
     fun togglePump(greenhouseId: String, enabled: Boolean) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -374,7 +495,61 @@ class ControlViewModel @Inject constructor(
         }
     }
 
-    // 🔹 Realtime Updates Setup
+    // ============ AUTOMATION METHODS ============
+
+    /**
+     * Start temperature monitoring untuk automasi blower.
+     *
+     * @param greenhouseId ID greenhouse yang akan di-monitor
+     *
+     * Flow:
+     * 1. Get latest temperature readings
+     * 2. Compare dengan threshold settings
+     * 3. Turn on/off blower berdasarkan rules:
+     *    - Turn on jika temperature > max threshold
+     *    - Turn off jika temperature < min threshold
+     */
+    private fun startTemperatureMonitoring(greenhouseId: String) {
+        viewModelScope.launch {
+            // Get latest temperature readings
+            when (val result = repository.getLatestSensorData(greenhouseId)) {
+                is NetworkResult.Success -> {
+                    result.data?.temperature?.let { temperature ->
+                        val settings = _automationSettings.value[greenhouseId]
+                        val device = _controlDevices.value[greenhouseId]
+
+                        if (settings != null && device != null && device.autoMode) {
+                            val shouldTurnOnFan = temperature > settings.maxTemperature
+                            val shouldTurnOffFan = temperature < settings.minTemperature
+
+                            if (shouldTurnOnFan && !device.fan) {
+                                // Temperature too high, turn on fan
+                                toggleBlower(greenhouseId, true)
+                            } else if (shouldTurnOffFan && device.fan) {
+                                // Temperature normal, turn off fan
+                                toggleBlower(greenhouseId, false)
+                            }
+                        }
+                    }
+                }
+                is NetworkResult.Error -> {
+                    _errorMessage.value = "Gagal memantau suhu: ${result.message}"
+                }
+                else -> {}
+            }
+        }
+    }
+
+    // ============ REALTIME UPDATES MANAGEMENT ============
+
+    /**
+     * Setup realtime updates untuk greenhouse tertentu.
+     *
+     * @param greenhouseId ID greenhouse untuk setup realtime updates
+     *
+     * Menggunakan repository's realtime stream untuk mendapatkan
+     * device updates secara real-time.
+     */
     private fun setupRealtimeUpdates(greenhouseId: String) {
         // Stop existing channel if any
         realtimeChannels[greenhouseId]?.cancel()
@@ -395,14 +570,33 @@ class ControlViewModel @Inject constructor(
         realtimeChannels[greenhouseId] = job
     }
 
+    // ============ STATE MANAGEMENT METHODS ============
+
+    /**
+     * Clear error message state.
+     *
+     * Dipanggil dari UI ketika user dismiss error message.
+     */
     fun clearErrorMessage() {
         _errorMessage.value = null
     }
 
+    /**
+     * Clear update success state.
+     *
+     * Dipanggil setelah success message ditampilkan.
+     */
     fun clearUpdateSuccess() {
         _updateSuccess.value = false
     }
 
+    // ============ LIFECYCLE MANAGEMENT ============
+
+    /**
+     * Cleanup resources ketika ViewModel di-destroy.
+     *
+     * Membersihkan semua realtime channels untuk prevent memory leaks.
+     */
     override fun onCleared() {
         super.onCleared()
         // Clean up realtime channels
