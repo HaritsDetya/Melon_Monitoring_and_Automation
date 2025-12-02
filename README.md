@@ -1,28 +1,6 @@
 # 🌱 Greenhouse Monitoring App
 Aplikasi Android berbasis Jetpack Compose yang terintegrasi dengan Supabase serta sistem IoT sensor & device untuk monitoring dan kontrol greenhouse secara real-time.
 
-## 📖 Daftar Isi
-
-- [Deskripsi Proyek](#pendahuluan)
-- [Fitur](#fitur)
-- [Instalasi](#instalasi)
-- [Konfigurasi](#konfigurasi)
-- [Penggunaan](#penggunaan)
-- [Struktur Project](#struktur-project)
-- [Lisensi](#lisensi)
-
-- [Deskripsi Proyek](#DeskripsiProyek)
-- [Fitur Utama](#FiturUtama)
-- [Arsitektur Sistem](#ArsitekturSistem)
-- [Teknologi yang Digunakan](#TeknologiyangDigunakan)
-- [Instalasi & Setup](#Instalasi&Setup)
-- [Navigasi Aplikasi](#NavigasiAplikasi)
-- [Struktur Fitur](#StrukturFitur)
-- [Contoh Alur Penggunaan](#ContohAlurPenggunaan)
-- [Troubleshooting](#Troubleshooting)
-- [Kontributor](#Kontributor)
-- [Lisensi](#Lisensi)
-
 ## 📌 Deskripsi Proyek
 
 Greenhouse Monitoring App adalah aplikasi Android yang memungkinkan pengguna melakukan monitoring sensor dan kontrol perangkat IoT pada greenhouse. Integrasi dengan Supabase digunakan untuk autentikasi, database, serta storage, sementara data sensor dikirimkan melalui perangkat IoT yang terhubung ke server backend.
