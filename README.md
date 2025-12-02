@@ -1,58 +1,135 @@
-# 🌿 Melon Monitoring and Automation
+# 🌱 Greenhouse Monitoring App
+Aplikasi Android berbasis Jetpack Compose yang terintegrasi dengan Supabase serta sistem IoT sensor & device untuk monitoring dan kontrol greenhouse secara real-time.
 
-A comprehensive Android application for monitoring and automating greenhouse environments, built with modern Android development practices using Jetpack Compose and Supabase.
+## 📖 Daftar Isi
 
-## ✨ Features
+- [Deskripsi Proyek](#pendahuluan)
+- [Fitur](#fitur)
+- [Instalasi](#instalasi)
+- [Konfigurasi](#konfigurasi)
+- [Penggunaan](#penggunaan)
+- [Struktur Project](#struktur-project)
+- [Lisensi](#lisensi)
 
-### 🏠 Greenhouse Management
-- **Multi-Greenhouse Support** - Manage multiple greenhouse locations
-- **Real-time Monitoring** - Live data from various sensors
-- **User-specific Access** - Each user can manage their own greenhouses
+- [Deskripsi Proyek](#DeskripsiProyek)
+- [Fitur Utama](#FiturUtama)
+- [Arsitektur Sistem](#ArsitekturSistem)
+- [Teknologi yang Digunakan](#TeknologiyangDigunakan)
+- [Instalasi & Setup](#Instalasi&Setup)
+- [Navigasi Aplikasi](#NavigasiAplikasi)
+- [Struktur Fitur](#StrukturFitur)
+- [Contoh Alur Penggunaan](#ContohAlurPenggunaan)
+- [Troubleshooting](#Troubleshooting)
+- [Kontributor](#Kontributor)
+- [Lisensi](#Lisensi)
 
-### 📊 Sensor Monitoring
-- **Temperature Tracking** - Real-time temperature monitoring with historical charts
-- **Interactive Charts** - 24-hour historical data visualization
-- **Sensor History** - Track sensor data over time with different time ranges
+## 📌 Deskripsi Proyek
 
-### ⚡ Smart Device Control
-- **Blower/Fan Control** - Automated temperature control with manual override
-- **Pump Management** - Control main pump and nutrient pump systems
-- **Auto Mode** - Intelligent automation based on temperature thresholds
-- **Real-time Device Sync** - Instant device status synchronization across devices
+Greenhouse Monitoring App adalah aplikasi Android yang memungkinkan pengguna melakukan monitoring sensor dan kontrol perangkat IoT pada greenhouse. Integrasi dengan Supabase digunakan untuk autentikasi, database, serta storage, sementara data sensor dikirimkan melalui perangkat IoT yang terhubung ke server backend.
 
-### 🔐 Secure Authentication
-- **Email-based Login** - Secure authentication with Supabase Auth
-- **User Profiles** - Personalized accounts with profile management
-- **Session Management** - Automatic login with secure session handling
+Aplikasi dibangun dengan Jetpack Compose dan mengadopsi pendekatan UI modern serta state-driven.
+## 🚀 Fitur Utama
 
-## 🛠 Tech Stack
+### 🔐 Autentikasi
+- Login
+- Registrasi akun
+- Reset password (via dialog + halaman khusus melalui deeplink email)
+- Logout
+- Delete account
+- Update password
 
-### Frontend
-- **Kotlin** - Primary programming language
-- **Jetpack Compose** - Modern declarative UI toolkit
-- **Material Design 3** - Latest Material Design components
-- **Android Architecture Components** - ViewModel, StateFlow, Coroutines
+### 📊 Dashboard Monitoring
+- Menampilkan daftar greenhouse yang terdaftar
+- Data sensor sekilas untuk setiap greenhouse:
+    - Suhu udara
+    - Kelembapan
+    - Suhu air
+    - pH air
+    - TDS
+- Detail greenhouse:
+    - Data sensor lengkap
+    - History sensor
 
-### Backend & Database
-- **Supabase** - Backend-as-a-Service with PostgreSQL
-- **PostgreSQL** - Relational database with Row Level Security
-- **Supabase Auth** - Secure authentication service
-- **Supabase Realtime** - Real-time subscriptions for live updates
+### 🔧 Kontrol Perangkat
+- Mengatur dan mengendalikan:
+    - Blower
+    - Pompa air
 
-### Architecture & Patterns
-- **MVVM Architecture** - Model-View-ViewModel pattern
-- **Repository Pattern** - Data abstraction layer
-- **Dependency Injection** - Hilt for dependency management
-- **Coroutines & Flow** - Asynchronous programming
+### 👤 Profil Pengguna
+- Menampilkan data akun
+- Akses ke:
+    - Ganti password
+    - Logout
+    - Delete account
 
-## 🚀 Installation & Setup
+## 🏗️ Arsitektur Sistem
+Aplikasi terdiri dari tiga komponen utama yang saling terintegrasi untuk menyediakan sistem monitoring dan kontrol greenhouse secara real-time.
+- Android App (Jetpack Compose)
 
-### Prerequisites
-- Android Studio Hedgehog or later
-- Android SDK 21+
-- Kotlin 1.9.0+
+    Aplikasi Android sebagai sisi client yang bertanggung jawab pada UI dan interaksi pengguna.
+    - UI berbasis Jetpack Compose
+    - ViewModel untuk pengelolaan state
+    - Navigasi Compose
+    - Supabase Client
+    - Realtime Sensor Listener (menerima update data sensor melalui Supabase Realtime)
 
-### Step 1: Clone the Repository
+- Supabase Backend
+
+    Menjadi pusat data dan autentikasi untuk aplikasi serta jembatan antara IoT dan aplikasi pengguna.
+
+    - Authentication (login, register, reset password, dll)
+    - Database:
+        - sensors
+        - users
+        - greenhouse
+        - devices
+    - REST API untuk akses data
+    - Realtime Channel untuk streaming data sensor dan kontrol device
+
+- IoT Devices (Hardware)
+    
+    Perangkat fisik dalam greenhouse yang berfungsi sebagai sensor dan aktuator.
+    - Mengirimkan data sensor ke Supabase:
+        - Suhu udara
+        - Kelembapan
+        - Suhu air
+        - pH
+        - TDS
+    - Menerima perintah kendali dari aplikasi:
+        - Blower
+        - Pompa air
+
+### Diagram Sederhana
+
+``` bash
+[IoT Sensors] ---> Supabase DB ---> Android App (Dashboard)
+[Android App] ---> Device Control ---> [IoT Devices]
+```
+
+## 🛠️ Teknologi yang Digunakan
+
+- Kotlin + Jetpack Compose
+- Supabase:
+    - Auth
+    - Postgres Database
+    - Realtime
+- Android Architecture Components
+    - ViewModel
+    - StateFlow / LiveData
+- Ktor / Retrofit
+- IoT Microcontroller
+
+
+## 📥 Instalasi & Setup
+
+1. Clone repository:
+
 ```bash
-git clone https://github.com/your-username/melon-monitoring-android.git
-cd melon-monitoring-android
+  git clone https://github.com/HaritsDetya/Melon_Monitoring_and_Automation.git
+```
+2. Buka di Android Studio (Hedgehog atau yang lebih baru)
+3. Pastikan Anda menggunakan:
+    - Compose Compiler terbaru
+    - Min SDK 24
+4. Tambahkan dependencies Supabase di build.gradle.
+    
