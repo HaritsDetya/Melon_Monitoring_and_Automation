@@ -109,3 +109,14 @@ Ikuti langkah ini untuk menjalankan project di lokal:
 7. Build & Run
 
     Sync Gradle dan jalankan aplikasi pada Emulator atau Device fisik.
+
+## 🤝 Kontribusi
+Jika Anda ingin berkontribusi:
+1. Fork repository ini.
+2. Buat branch fitur (git checkout -b fitur-baru).
+3. Commit perubahan (git commit -m 'Menambahkan fitur X').
+4. Push ke branch (git push origin fitur-baru).
+5. Buat Pull Request.
+
+## 📄 Lisensi
+Distributed under the MIT License. See LICENSE for more information.
