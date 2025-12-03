@@ -59,3 +59,14 @@ graph TD
         Actuators[Relay: Pump, Blower]
     end
 ```
+
+### Komponen Teknis
+* Android Client:
+    * UI: Jetpack Compose
+    * State Management: ViewModel & StateFlow
+    * Network: Ktor / Supabase-kt
+    * DI: Hilt (Dagger)
+* Supabase Backend:
+    * Auth: Mengelola sesi pengguna.
+    * Database: Menyimpan data users, devices, dan log sensor.
+    * Realtime: Broadcast perubahan data sensor ke aplikasi instan.
