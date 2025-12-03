@@ -92,16 +92,20 @@ Ikuti langkah ini untuk menjalankan project di lokal:
     cd Melon_Monitoring_and_Automation
     ```
 3. Konfigurasi API Keys (PENTING ⚠️)
-Project ini memerlukan URL dan Anon Key Supabase. Buat file local.properties di root project (jika belum ada) dan tambahkan:
+
+    Project ini memerlukan URL dan Anon Key Supabase. Buat file local.properties di root project (jika belum ada) dan tambahkan:
     ``` properties
     SUPABASE_URL="[https://project-id.supabase.co](https://project-id.supabase.co)"
     SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     ```
-Pastikan variabel ini dibaca oleh build.gradle Anda.
+
+    Pastikan variabel ini dibaca oleh build.gradle Anda.
 5. Setup Database (Supabase)
-Pastikan table berikut tersedia di Supabase Anda:
+
+    Pastikan table berikut tersedia di Supabase Anda:
     * users: Menyimpan profil user.
     * sensors: Log data sensor (columns: id, created_at, temp_air, humidity, ph, tds, temp_water).
     * devices: Status perangkat (blower, pump).
 7. Build & Run
-Sync Gradle dan jalankan aplikasi pada Emulator atau Device fisik.
+
+    Sync Gradle dan jalankan aplikasi pada Emulator atau Device fisik.
