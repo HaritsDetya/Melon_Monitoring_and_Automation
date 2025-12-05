@@ -35,6 +35,8 @@ import com.example.melon_monitoring_and_automation.data.network.NetworkResult
 import com.example.melon_monitoring_and_automation.data.network.SupabaseManager
 import com.example.melon_monitoring_and_automation.domain.model.AutomationSettings
 import com.example.melon_monitoring_and_automation.domain.model.ControlDevices
+import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouseRequest
+import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouseResponse
 import com.example.melon_monitoring_and_automation.domain.model.DeviceCommand
 import com.example.melon_monitoring_and_automation.domain.model.DeviceStatusUpdate
 import com.example.melon_monitoring_and_automation.domain.model.DeviceTelemetryData
@@ -1035,6 +1037,50 @@ class HydroponicRepository(
             } catch (e: Exception) {
                 println("🔹 [REPO] Error registering device: ${e.message}")
                 NetworkResult.Error("Failed to register device: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * CREATE NEW GREENHOUSE
+     * Membuat greenhouse baru dengan data default otomatis
+     *
+     * @param name Nama greenhouse
+     * @param location Lokasi greenhouse
+     * @param description Deskripsi optional
+     * @return NetworkResult dengan response data
+     */
+    suspend fun createGreenhouse(
+        name: String,
+        location: String,
+        description: String? = null
+    ): NetworkResult<CreateGreenhouseResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔹 [REPO] Creating new greenhouse: $name")
+
+                val request = CreateGreenhouseRequest(
+                    name = name,
+                    location = location,
+                    description = description
+                )
+
+                val result = apiService.createGreenhouse(request)
+
+                if (result is NetworkResult.Success) {
+                    println("🔹 [REPO] Greenhouse created successfully: ${result.data.greenhouse?.id}")
+
+                    // Reload user greenhouses list
+                    val currentUser = getCurrentUser()
+                    currentUser?.let { user ->
+                        getUserGreenhouses(user.id) // This will update the state
+                    }
+                }
+
+                result
+            } catch (e: Exception) {
+                println("🔹 [REPO] Error creating greenhouse: ${e.message}")
+                NetworkResult.Error("Failed to create greenhouse: ${e.message}")
             }
         }
     }

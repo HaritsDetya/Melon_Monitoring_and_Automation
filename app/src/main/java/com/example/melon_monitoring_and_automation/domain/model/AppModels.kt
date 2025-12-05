@@ -187,6 +187,22 @@ data class MonthYear(
         }
 }
 
+@Serializable
+data class CreateGreenhouseRequest(
+    val name: String,
+    val location: String,
+    val description: String? = null
+)
+
+@Serializable
+data class CreateGreenhouseResponse(
+    val success: Boolean,
+    val message: String,
+    val greenhouse: Greenhouse? = null,
+    val settings: AutomationSettings? = null,
+    val controlDevice: ControlDevices? = null
+)
+
 // ============ IoT DEVICE MODELS (NEW - FOR SUPABASE INTEGRATION) ============
 
 @Serializable

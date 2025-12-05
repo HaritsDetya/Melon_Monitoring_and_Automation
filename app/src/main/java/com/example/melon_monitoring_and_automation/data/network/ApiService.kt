@@ -19,15 +19,20 @@
 
 package com.example.melon_monitoring_and_automation.data.network
 
+import com.example.melon_monitoring_and_automation.domain.model.AutomationSettings
 import com.example.melon_monitoring_and_automation.domain.model.ControlDevices
+import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouseRequest
+import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouseResponse
 import com.example.melon_monitoring_and_automation.domain.model.DeviceCommand
 import com.example.melon_monitoring_and_automation.domain.model.DeviceStatusUpdate
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
 import com.example.melon_monitoring_and_automation.domain.model.IoTDevice
 import com.example.melon_monitoring_and_automation.domain.model.SendDeviceCommand
 import com.example.melon_monitoring_and_automation.domain.model.SensorReadings
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock.System
 
 class ApiService(private val postgrest: Postgrest) {
@@ -389,6 +394,127 @@ class ApiService(private val postgrest: Postgrest) {
             NetworkResult.Success(true)
         } catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to mark command as executed: ${e.message}")
+        }
+    }
+
+    /**
+     * CREATE NEW GREENHOUSE
+     * Membuat greenhouse baru dengan data default otomatis
+     *
+     * @param request CreateGreenhouseRequest object
+     * @return NetworkResult dengan response data
+     */
+    suspend fun createGreenhouse(request: CreateGreenhouseRequest): NetworkResult<CreateGreenhouseResponse> {
+        return try {
+            val currentUser = SupabaseManager.client.auth.currentUserOrNull()
+            if (currentUser == null) {
+                return NetworkResult.Error("User not authenticated")
+            }
+
+            println("🔹 [API] Creating greenhouse for user: ${currentUser.id}")
+            println("🔹 [API] Greenhouse data: ${request.name}, ${request.location}")
+
+            // Prepare greenhouse data
+            val greenhouseData = mapOf(
+                "name" to request.name,
+                "location" to request.location,
+                "owner_id" to currentUser.id,
+                "description" to request.description,
+                "created_at" to System.now().toString()
+            )
+
+            // Insert greenhouse
+            val greenhouse: Greenhouse = postgrest["greenhouses"]
+                .insert(greenhouseData) {
+                    select()
+                }
+                .decodeSingle()
+
+            println("🔹 [API] Greenhouse created: ${greenhouse.id}")
+
+            // Wait for trigger to create default data
+            delay(1000)
+
+            // Get created default data
+            val settingsResult = getAutomationSettingsForGreenhouse(greenhouse.id)
+            val controlDeviceResult = getControlDeviceForGreenhouse(greenhouse.id)
+
+            // Handle the results
+            val settings = if (settingsResult is NetworkResult.Success) {
+                settingsResult.data
+            } else {
+                null
+            }
+
+            val controlDevice = if (controlDeviceResult is NetworkResult.Success) {
+                controlDeviceResult.data
+            } else {
+                null
+            }
+
+            // Log results
+            println("🔹 [API] Settings created: ${settings != null}")
+            println("🔹 [API] Control device created: ${controlDevice != null}")
+
+            NetworkResult.Success(
+                CreateGreenhouseResponse(
+                    success = true,
+                    message = "Greenhouse created successfully",
+                    greenhouse = greenhouse,
+                    settings = settings,
+                    controlDevice = controlDevice
+                )
+            )
+        } catch (e: Exception) {
+            println("🔹 [API] Error creating greenhouse: ${e.message}")
+            e.printStackTrace()
+            NetworkResult.Error(e.localizedMessage ?: "Failed to create greenhouse: ${e.message}")
+        }
+    }
+
+    /**
+     * GET AUTOMATION SETTINGS FOR GREENHOUSE
+     * Helper untuk mendapatkan settings setelah greenhouse dibuat
+     */
+    private suspend fun getAutomationSettingsForGreenhouse(greenhouseId: String): NetworkResult<AutomationSettings?> {
+        return try {
+            println("🔹 [API] Getting automation settings for greenhouse: $greenhouseId")
+
+            val result: List<AutomationSettings> = postgrest["automation_settings"]
+                .select {
+                    filter { eq("greenhouse_id", greenhouseId) }
+                }
+                .decodeList()
+
+            println("🔹 [API] Found ${result.size} automation settings")
+
+            NetworkResult.Success(result.firstOrNull())
+        } catch (e: Exception) {
+            println("🔹 [API] Error getting automation settings: ${e.message}")
+            NetworkResult.Error(e.localizedMessage ?: "Failed to get automation settings")
+        }
+    }
+
+    /**
+     * GET CONTROL DEVICE FOR GREENHOUSE
+     * Helper untuk mendapatkan control device setelah greenhouse dibuat
+     */
+    private suspend fun getControlDeviceForGreenhouse(greenhouseId: String): NetworkResult<ControlDevices?> {
+        return try {
+            println("🔹 [API] Getting control device for greenhouse: $greenhouseId")
+
+            val result: List<ControlDevices> = postgrest["control_devices"]
+                .select {
+                    filter { eq("greenhouse_id", greenhouseId) }
+                }
+                .decodeList()
+
+            println("🔹 [API] Found ${result.size} control devices")
+
+            NetworkResult.Success(result.firstOrNull())
+        } catch (e: Exception) {
+            println("🔹 [API] Error getting control device: ${e.message}")
+            NetworkResult.Error(e.localizedMessage ?: "Failed to get control device")
         }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sensors
@@ -32,10 +33,13 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +93,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun DashboardScreen(
     onGreenhouseClick: (String) -> Unit,
+    onAddGreenhouseClick: () -> Unit = {},
     viewModel: GreenhouseViewModel = hiltViewModel()
 ) {
     // STATE COLLECTION - Collect state dari ViewModel
@@ -164,6 +169,18 @@ fun DashboardScreen(
                     titleContentColor = Color.White
                 )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddGreenhouseClick,
+                containerColor = Color(0xFF4CAF50),
+                contentColor = Color.White
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Tambah Greenhouse"
+                )
+            }
         }
     ) { paddingValues ->
         Box(
@@ -281,14 +298,15 @@ private fun DashboardContent(
     greenhouses: List<Greenhouse>,
     sensorReadings: Map<String, SensorReadings>,
     isLoading: Boolean,
-    onGreenhouseClick: (String) -> Unit
+    onGreenhouseClick: (String) -> Unit,
+    onAddGreenhouseClick: () -> Unit = {}
 ) {
     when {
         isLoading && greenhouses.isEmpty() -> {
             LoadingState()
         }
         greenhouses.isEmpty() -> {
-            EmptyState()
+            EmptyState(onAddGreenhouseClick = onAddGreenhouseClick)
         }
         else -> {
             GreenhouseList(
@@ -345,7 +363,9 @@ private fun LoadingState() {
  */
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(
+    onAddGreenhouseClick: () -> Unit = {}
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -374,6 +394,22 @@ private fun EmptyState() {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
+
+            // Tambah Button untuk Create Greenhouse
+            Button(
+                onClick = onAddGreenhouseClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4CAF50)
+                )
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Tambah",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Tambah Greenhouse")
+            }
         }
     }
 }

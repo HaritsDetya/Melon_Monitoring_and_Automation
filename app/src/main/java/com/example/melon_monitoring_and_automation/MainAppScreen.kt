@@ -134,6 +134,9 @@ fun MainAppScreen(
                     onGreenhouseClick = { greenhouseId ->
                         // Navigate ke greenhouse detail menggunakan parent navController
                         navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId")
+                    },
+                    onAddGreenhouseClick = {
+                        navController.navigate(Screen.CreateGreenhouse.route)
                     }
                 )
             }

@@ -39,8 +39,8 @@ sealed class Screen(val route: String) {
     // ADDITIONAL SCREENS - Outside bottom navigation
     object GreenhouseDetail : Screen("greenhouse_detail")
     object ChangePassword : Screen("change_password")
-
     object DeviceManagement : Screen("device_management")
+    object CreateGreenhouse : Screen("create_greenhouse")
 
     // IOT DEVICE SCREENS - Device pairing dan management
     object DeviceSetupGuide : Screen("device_setup_guide")

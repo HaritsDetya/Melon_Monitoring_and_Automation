@@ -40,6 +40,7 @@ import com.example.melon_monitoring_and_automation.ui.screen.auth.LoginScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.RegisterScreen
 import com.example.melon_monitoring_and_automation.ui.screen.auth.ResetPasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.control.DeviceManagementScreen
+import com.example.melon_monitoring_and_automation.ui.screen.dashboard.CreateGreenhouseScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.GreenhouseDetailScreen
 import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceListScreen
 import com.example.melon_monitoring_and_automation.ui.screen.pairing.DevicePairingScreen
@@ -253,6 +254,18 @@ fun MainApp() {
                     onBackClick = { navController.popBackStack() },
                     onAddDeviceClick = {
                         navController.navigate(Screen.DeviceSetupGuide.route)
+                    }
+                )
+            }
+
+            composable(Screen.CreateGreenhouse.route) {
+                CreateGreenhouseScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onSuccess = { greenhouseId ->
+                        // Navigate ke greenhouse detail atau kembali ke dashboard
+                        navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId") {
+                            popUpTo(Screen.Dashboard.route) { inclusive = false }
+                        }
                     }
                 )
             }
