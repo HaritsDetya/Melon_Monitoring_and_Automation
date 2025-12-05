@@ -187,13 +187,13 @@ supabase/                      # Backend configuration
 
 ## 📚 **Dokumentasi Terkait**
 
-|     Dokumen      |                        Deskripsi                        |        Target Pembaca        |
-|:----------------:|:-------------------------------------------------------:|:----------------------------:|
-|   DATABASE.md    | 	Dokumentasi teknis database Supabase lengkap           | Backend Dev, Database Admin  |
-| API_REFERENCE.md |           API endpoints dan payload examples            |  Mobile Dev, IoT Developer   |
-| ARCHITECTURE.md  |               	Diagram arsitektur detail             |     Tech Lead, Architect     |
-|  DEPLOYMENT.md   |            Panduan deployment ke Play Store             |   DevOps, Release Manager    |
-|    TESTING.md    |                 	Panduan testing dan QA                 |     QA Engineer, Tester      |
+|          Dokumen           |                        Deskripsi                        |        Target Pembaca        |
+|:--------------------------:|:-------------------------------------------------------:|:----------------------------:|
+| [DATABASE.md](DATABASE.md) | 	Dokumentasi teknis database Supabase lengkap           | Backend Dev, Database Admin  |
+|      API_REFERENCE.md      |           API endpoints dan payload examples            |  Mobile Dev, IoT Developer   |
+|      ARCHITECTURE.md       |               	Diagram arsitektur detail             |     Tech Lead, Architect     |
+|       DEPLOYMENT.md        |            Panduan deployment ke Play Store             |   DevOps, Release Manager    |
+|         TESTING.md         |                 	Panduan testing dan QA                 |     QA Engineer, Tester      |
 
 ## 🤝 **Kontribusi**
 Cara Berkontribusi
