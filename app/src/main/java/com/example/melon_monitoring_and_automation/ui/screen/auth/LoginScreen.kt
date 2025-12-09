@@ -31,12 +31,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -64,8 +68,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.melon_monitoring_and_automation.BuildConfig
@@ -141,6 +147,8 @@ fun LoginScreen(
                     colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
                 )
             )
+            .imePadding(),
+        contentAlignment = Alignment.Center
     ) {
         // BACKGROUND DECORATION - Plant image untuk aesthetic
         Image(
@@ -158,7 +166,8 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .zIndex(2f),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -172,8 +181,10 @@ fun LoginScreen(
         // MAIN CONTENT COLUMN
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(40.dp),
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -184,6 +195,7 @@ fun LoginScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF388E3C)
                 ),
+                textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
@@ -311,6 +323,8 @@ fun LoginScreen(
             ) {
                 Text("Belum memiliki akun?", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
         // RESET PASSWORD DIALOG

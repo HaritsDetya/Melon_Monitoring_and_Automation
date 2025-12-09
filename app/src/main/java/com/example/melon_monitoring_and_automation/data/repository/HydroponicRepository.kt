@@ -39,7 +39,6 @@ import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouse
 import com.example.melon_monitoring_and_automation.domain.model.CreateGreenhouseResponse
 import com.example.melon_monitoring_and_automation.domain.model.DeviceCommand
 import com.example.melon_monitoring_and_automation.domain.model.DeviceStatusUpdate
-import com.example.melon_monitoring_and_automation.domain.model.DeviceTelemetryData
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
 import com.example.melon_monitoring_and_automation.domain.model.IoTDevice
 import com.example.melon_monitoring_and_automation.domain.model.SendDeviceCommand
@@ -927,21 +926,19 @@ class HydroponicRepository(
     }
 
     /**
-     * GET REALTIME DEVICE TELEMETRY
-     * Membuat Flow untuk real-time device telemetry updates
-     * Menggunakan Supabase Realtime untuk live sensor data
-     *
-     * @param greenhouseId ID greenhouse untuk subscribe updates
-     * @return Flow<DeviceTelemetryData?> dengan real-time telemetry
+     * GET REALTIME SENSOR UPDATES (REPLACEMENT FOR TELEMETRY)
+     * Mendengarkan update langsung dari tabel sensor_readings
      */
-    fun getRealtimeDeviceTelemetry(greenhouseId: String): Flow<DeviceTelemetryData?> = callbackFlow {
-        val channel = supabaseClient.realtime.channel("telemetry_updates_$greenhouseId")
+    fun getRealtimeSensorUpdates(greenhouseId: String): Flow<SensorReadings?> = callbackFlow {
+        // Ubah nama channel agar unik
+        val channel = supabaseClient.realtime.channel("sensor_updates_$greenhouseId")
 
         try {
             channel.subscribe()
 
+            // Ubah target table menjadi 'sensor_readings'
             val flow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                table = "sensor_readings" // atau tabel telemetry khusus jika ada
+                table = "sensor_readings"
                 filter = "greenhouse_id=eq.$greenhouseId"
             }
 
@@ -951,10 +948,11 @@ class HydroponicRepository(
                 flow.collect { change ->
                     try {
                         val recordJson = change.record.toString()
-                        val telemetry = json.decodeFromString<DeviceTelemetryData>(recordJson)
-                        trySend(telemetry)
+                        // Decode langsung ke SensorReadings
+                        val reading = json.decodeFromString<SensorReadings>(recordJson)
+                        trySend(reading)
                     } catch (e: Exception) {
-                        println("🔹 [REPO] Error decoding telemetry: ${e.message}")
+                        println("🔹 [REPO] Error decoding sensor reading: ${e.message}")
                         trySend(null)
                     }
                 }

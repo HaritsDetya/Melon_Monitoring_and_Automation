@@ -1,24 +1,26 @@
 package com.example.melon_monitoring_and_automation.ui.screen.dashboard
 
+import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -63,6 +65,7 @@ import com.example.melon_monitoring_and_automation.R
 import com.example.melon_monitoring_and_automation.SetSystemBars
 import com.example.melon_monitoring_and_automation.domain.model.Greenhouse
 import com.example.melon_monitoring_and_automation.domain.model.SensorReadings
+import com.example.melon_monitoring_and_automation.ui.components.DateUtils
 import com.example.melon_monitoring_and_automation.ui.viewmodel.GreenhouseViewModel
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
@@ -89,6 +92,7 @@ import kotlinx.coroutines.delay
  * @param viewModel ViewModel yang mengelola data greenhouse dan sensor readings
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -139,7 +143,7 @@ fun DashboardScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.plant),
+                                painter = painterResource(id = R.drawable.logo_svg),
                                 contentDescription = "App Icon",
                                 tint = Color.White,
                                 modifier = Modifier.size(24.dp)
@@ -190,9 +194,7 @@ fun DashboardScreen(
                 .padding(paddingValues) // Gunakan padding dari Scaffold
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // Scrollable content
+                modifier = Modifier.fillMaxSize()
             ) {
                 // SUMMARY STATS CARD - Hanya tampil jika ada greenhouse
                 if (greenhouses.isNotEmpty()) {
@@ -207,12 +209,15 @@ fun DashboardScreen(
                 }
 
                 // MAIN CONTENT AREA - Dengan berbagai state handling
-                DashboardContent(
-                    greenhouses = greenhouses,
-                    sensorReadings = sensorReadings,
-                    isLoading = isLoading,
-                    onGreenhouseClick = onGreenhouseClick
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    DashboardContent(
+                        greenhouses = greenhouses,
+                        sensorReadings = sensorReadings,
+                        isLoading = isLoading,
+                        onGreenhouseClick = onGreenhouseClick,
+                        onAddGreenhouseClick = onAddGreenhouseClick
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -293,6 +298,8 @@ private fun SummaryStatsCard(
  * @param onGreenhouseClick Callback ketika greenhouse dipilih
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun DashboardContent(
     greenhouses: List<Greenhouse>,
@@ -302,18 +309,61 @@ private fun DashboardContent(
     onAddGreenhouseClick: () -> Unit = {}
 ) {
     when {
-        isLoading && greenhouses.isEmpty() -> {
-            LoadingState()
-        }
-        greenhouses.isEmpty() -> {
-            EmptyState(onAddGreenhouseClick = onAddGreenhouseClick)
-        }
+        isLoading && greenhouses.isEmpty() -> LoadingState()
+        greenhouses.isEmpty() -> EmptyState(onAddGreenhouseClick = onAddGreenhouseClick)
         else -> {
-            GreenhouseList(
-                greenhouses = greenhouses,
-                sensorReadings = sensorReadings,
-                onGreenhouseClick = onGreenhouseClick
-            )
+            BoxWithConstraints {
+                val cellCount = if (maxWidth > 600.dp) 2 else 1
+
+                GreenhouseResponsiveList(
+                    greenhouses = greenhouses,
+                    sensorReadings = sensorReadings,
+                    onGreenhouseClick = onGreenhouseClick,
+                    cellCount = cellCount
+                )
+            }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun GreenhouseResponsiveList(
+    greenhouses: List<Greenhouse>,
+    sensorReadings: Map<String, SensorReadings>,
+    onGreenhouseClick: (String) -> Unit,
+    cellCount: Int
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = "Greenhouse Saya",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            color = Color(0xFF333333)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(cellCount),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 80.dp
+            ),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(greenhouses) { greenhouse ->
+                val readings = sensorReadings[greenhouse.id]
+                GreenhouseCard(
+                    greenhouse = greenhouse,
+                    sensorReadings = readings,
+                    onClick = { onGreenhouseClick(greenhouse.id) }
+                )
+            }
         }
     }
 }
@@ -428,6 +478,7 @@ private fun EmptyState(
  * @param onGreenhouseClick Callback ketika greenhouse dipilih
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun GreenhouseList(
     greenhouses: List<Greenhouse>,
@@ -544,6 +595,7 @@ fun StatItem(
  * @param modifier Modifier untuk kustomisasi layout
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun GreenhouseCard(
     greenhouse: Greenhouse,
@@ -568,11 +620,12 @@ fun GreenhouseCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // CONTENT - Berdasarkan ketersediaan data sensor
-            if (sensorReadings != null) {
-                SensorReadingsContent(sensorReadings)
-            } else {
-                NoSensorDataContent()
-            }
+//            if (sensorReadings != null) {
+//                SensorReadingsContent(sensorReadings)
+//            } else {
+//                NoSensorDataContent()
+//            }
+            SensorReadingsContent(sensorReadings)
 
             // FOOTER - Navigation hint
             NavigationHint()
@@ -619,14 +672,21 @@ private fun GreenhouseHeader(
             )
         }
 
+        // STATUS INDICATOR LOGIC
+        val statusColor = if (sensorReadings != null) {
+            // Jika ada data, asumsikan online (Hijau)
+            Color(0xFF4CAF50)
+        } else {
+            // Jika data null, warnanya Abu-abu (Offline/No Data)
+            Color.LightGray
+        }
+
         // STATUS INDICATOR DOT
         Box(
             modifier = Modifier
                 .size(12.dp)
                 .clip(CircleShape)
-                .background(
-                    color = if (sensorReadings != null) Color(0xFF4CAF50) else Color(0xFFFF9800)
-                )
+                .background(color = statusColor)
         )
     }
 }
@@ -643,8 +703,9 @@ private fun GreenhouseHeader(
  * @param sensorReadings Data sensor yang akan ditampilkan
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun SensorReadingsContent(sensorReadings: SensorReadings) {
+private fun SensorReadingsContent(sensorReadings: SensorReadings?) {
     // TIGA SENSOR READINGS UTAMA
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -652,37 +713,45 @@ private fun SensorReadingsContent(sensorReadings: SensorReadings) {
         verticalAlignment = Alignment.Top
     ) {
         SensorReadingItem(
-            value = sensorReadings.temperature,
+            value = sensorReadings?.temperature,
             label = "Suhu",
             icon = Icons.Default.Thermostat,
-            color = Color(0xFFF44336), // Red
+            color = if (sensorReadings?.temperature != null) Color(0xFFF44336) else Color.Gray, // Warna jadi abu jika null
             unit = "°C"
         )
 
         SensorReadingItem(
-            value = sensorReadings.humidity,
+            value = sensorReadings?.humidity,
             label = "Kelembapan",
             icon = Icons.Default.WaterDrop,
-            color = Color(0xFF2196F3), // Blue
+            color = if (sensorReadings?.humidity != null) Color(0xFF2196F3) else Color.Gray,
             unit = "%"
         )
 
         SensorReadingItem(
-            value = sensorReadings.ph,
+            value = sensorReadings?.ph,
             label = "pH",
             icon = Icons.Default.Sensors,
-            color = Color(0xFF9C27B0), // Purple
+            color = if (sensorReadings?.ph != null) Color(0xFF9C27B0) else Color.Gray,
             unit = "pH"
         )
     }
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // LAST UPDATED TIMESTAMP
+    // LAST UPDATED TIMESTAMP LOGIC
+    val formattedTime = if (sensorReadings?.recordedAt != null) {
+        "Update: ${DateUtils.formatToLocalTime(sensorReadings.recordedAt)}"
+    } else {
+        "Menunggu data sensor..."
+    }
+
     Text(
-        text = "Update: ${sensorReadings.recordedAt?.take(16) ?: "-"}",
+        text = formattedTime,
         style = MaterialTheme.typography.bodySmall,
-        color = Color.Gray
+        color = Color.Gray,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center // Center text agar lebih rapi saat pesan panjang
     )
 }
 
@@ -776,7 +845,7 @@ fun SensorReadingItem(
             text = value?.let { "%.1f".format(it) } ?: "-",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = Color(0xFF333333)
+            color = if (value != null) Color(0xFF333333) else Color.Gray // Text abu-abu jika kosong
         )
 
         // SENSOR LABEL
@@ -788,7 +857,7 @@ fun SensorReadingItem(
 
         // MEASUREMENT UNIT
         Text(
-            text = unit,
+            text = if (value != null) unit else "",
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )

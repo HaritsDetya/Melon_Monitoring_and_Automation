@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -467,13 +468,25 @@ fun UserGreenhousesSection(greenhouses: List<Greenhouse>) {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (greenhouses.isEmpty()) {
-                Text(
-                    "Belum ada greenhouse",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Tampilan Empty State yang lebih cantik
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Spa,
+                        contentDescription = null,
+                        tint = Color.LightGray,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Belum ada greenhouse",
+                        color = Color.Gray
+                    )
+                }
             } else {
+                // Gunakan Column biasa untuk list pendek, jangan LazyColumn di dalam Scrollable Column
                 greenhouses.forEach { greenhouse ->
                     GreenhouseProfileCard(greenhouse = greenhouse)
                     Spacer(modifier = Modifier.height(8.dp))

@@ -114,7 +114,7 @@ fun SplashScreen(
         ) {
             // APP LOGO
             Image(
-                painter = painterResource(id = R.drawable.plant),
+                painter = painterResource(id = R.drawable.logo_svg),
                 contentDescription = "App Logo - Melon Hydroponic",
                 modifier = Modifier.size(120.dp),
                 contentScale = ContentScale.Fit

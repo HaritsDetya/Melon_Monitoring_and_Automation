@@ -137,8 +137,6 @@ class ApiService(private val postgrest: Postgrest) {
         }
     }
 
-    // Tambahkan di class ApiService setelah fungsi yang sudah ada
-
     /**
      * IOT DEVICES MANAGEMENT
      * Fungsi-fungsi untuk mengelola perangkat IoT

@@ -1,9 +1,11 @@
 package com.example.melon_monitoring_and_automation.ui.screen.control
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -21,12 +24,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeviceHub
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -333,6 +338,7 @@ private fun NoGreenhouseSelectedState() {
  * @param viewModel ViewModel untuk handling actions
  */
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun ControlSections(
     greenhouseId: String,
@@ -340,38 +346,66 @@ private fun ControlSections(
     settings: AutomationSettings,
     viewModel: ControlViewModel
 ) {
-    // BLOWER CONTROL SECTION
-    BlowerControlSection(
-        controlDevice = controlDevice,
-        automationSettings = settings,
-        onBlowerToggle = { enabled ->
-            viewModel.toggleBlower(greenhouseId, enabled)
-        },
-        onAutoModeToggle = { autoMode ->
-            viewModel.setAutoMode(greenhouseId, autoMode)
-        },
-        onTemperatureThresholdsChange = { minTemp, maxTemp ->
-            viewModel.updateTemperatureThresholds(greenhouseId, minTemp, maxTemp)
-        }
-    )
+    BoxWithConstraints {
+        if (maxWidth > 600.dp) {
+            // === LAYOUT TABLET (2 KOLOM) ===
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                // Kolom Kiri: Blower
+                Column(modifier = Modifier.weight(1f)) {
+                    BlowerControlSection(
+                        controlDevice = controlDevice,
+                        automationSettings = settings,
+                        onBlowerToggle = { viewModel.toggleBlower(greenhouseId, it) },
+                        onAutoModeToggle = { viewModel.setAutoMode(greenhouseId, it) },
+                        onTemperatureThresholdsChange = { min, max ->
+                            viewModel.updateTemperatureThresholds(greenhouseId, min, max)
+                        }
+                    )
+                }
 
-    // NUTRIENT PUMP CONTROL SECTION
-    NutrientPumpControlSection(
-        automationSettings = settings,
-        onDropletsChange = { droplets ->
-            viewModel.setNutrientDroplets(greenhouseId, droplets)
+                // Kolom Kanan: Pompa & Nutrisi
+                Column(modifier = Modifier.weight(1f)) {
+                    NutrientPumpControlSection(
+                        automationSettings = settings,
+                        onDropletsChange = { viewModel.setNutrientDroplets(greenhouseId, it) }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PumpControlSection(
+                        controlDevice = controlDevice,
+                        onPumpToggle = { viewModel.togglePump(greenhouseId, it) }
+                    )
+                }
+            }
+        } else {
+            // === LAYOUT HP (1 KOLOM / SEPERTI SEBELUMNYA) ===
+            Column {
+                BlowerControlSection(
+                    controlDevice = controlDevice,
+                    automationSettings = settings,
+                    onBlowerToggle = { viewModel.toggleBlower(greenhouseId, it) },
+                    onAutoModeToggle = { viewModel.setAutoMode(greenhouseId, it) },
+                    onTemperatureThresholdsChange = { min, max ->
+                        viewModel.updateTemperatureThresholds(greenhouseId, min, max)
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                NutrientPumpControlSection(
+                    automationSettings = settings,
+                    onDropletsChange = { viewModel.setNutrientDroplets(greenhouseId, it) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                PumpControlSection(
+                    controlDevice = controlDevice,
+                    onPumpToggle = { viewModel.togglePump(greenhouseId, it) }
+                )
+            }
         }
-    )
+    }
 
-    // MAIN PUMP CONTROL SECTION
-    PumpControlSection(
-        controlDevice = controlDevice,
-        onPumpToggle = { enabled ->
-            viewModel.togglePump(greenhouseId, enabled)
-        }
-    )
-
-    // BOTTOM SPACER
     Spacer(modifier = Modifier.height(32.dp))
 }
 
@@ -395,52 +429,34 @@ fun GreenhouseSelector(
     selectedGreenhouse: String?,
     onGreenhouseSelected: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "Pilih Greenhouse",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            "Pilih Greenhouse",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
-            if (greenhouses.isEmpty()) {
-                Text(
-                    "Tidak ada greenhouse tersedia",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-            } else {
-                greenhouses.forEach { greenhouse ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onGreenhouseSelected(greenhouse.id) }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedGreenhouse == greenhouse.id,
-                            onClick = { onGreenhouseSelected(greenhouse.id) }
-                        )
-                        Column(modifier = Modifier.padding(start = 8.dp)) {
-                            Text(
-                                greenhouse.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                greenhouse.location,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
+        // Ganti Column vertikal menjadi LazyRow horizontal agar lebih hemat tempat
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(greenhouses) { greenhouse ->
+                FilterChip(
+                    selected = selectedGreenhouse == greenhouse.id,
+                    onClick = { onGreenhouseSelected(greenhouse.id) },
+                    label = {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(greenhouse.name, fontWeight = FontWeight.Bold)
+                            Text(greenhouse.location, style = MaterialTheme.typography.labelSmall)
+                        }
+                    },
+                    leadingIcon = {
+                        if (selectedGreenhouse == greenhouse.id) {
+                            Icon(Icons.Default.Spa, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     }
-                }
+                )
             }
         }
     }

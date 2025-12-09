@@ -1,13 +1,9 @@
 package com.example.melon_monitoring_and_automation.di
 
 import android.content.Context
-import androidx.room.Room
-import com.example.melon_monitoring_and_automation.data.local.AppDatabase
-import com.example.melon_monitoring_and_automation.data.local.LocalRepository
 import com.example.melon_monitoring_and_automation.data.network.SupabaseManager
 import com.example.melon_monitoring_and_automation.data.repository.HydroponicRepository
 import com.example.melon_monitoring_and_automation.data.repository.IoTDeviceRepository
-import com.example.melon_monitoring_and_automation.domain.usecase.DataUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,23 +15,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
-    @Provides
-    @Singleton
-    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
-            context.applicationContext,
-            AppDatabase::class.java,
-            "hydroponic_db"
-        ).fallbackToDestructiveMigration()
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideLocalRepository(database: AppDatabase): LocalRepository {
-        return LocalRepository(database)
-    }
 
     @Provides
     @Singleton
@@ -57,11 +36,5 @@ object AppModule {
     @Singleton
     fun provideSupabaseClient(): SupabaseClient {
         return SupabaseManager.client
-    }
-
-    @Provides
-    @Singleton
-    fun provideDataUseCase(repository: HydroponicRepository): DataUseCase {
-        return DataUseCase(repository)
     }
 }

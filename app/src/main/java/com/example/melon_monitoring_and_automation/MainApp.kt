@@ -42,10 +42,6 @@ import com.example.melon_monitoring_and_automation.ui.screen.auth.ResetPasswordS
 import com.example.melon_monitoring_and_automation.ui.screen.control.DeviceManagementScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.CreateGreenhouseScreen
 import com.example.melon_monitoring_and_automation.ui.screen.dashboard.GreenhouseDetailScreen
-import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceListScreen
-import com.example.melon_monitoring_and_automation.ui.screen.pairing.DevicePairingScreen
-import com.example.melon_monitoring_and_automation.ui.screen.pairing.DeviceSetupGuideScreen
-import com.example.melon_monitoring_and_automation.ui.screen.pairing.QRScannerScreen
 import com.example.melon_monitoring_and_automation.ui.screen.profile.ChangePasswordScreen
 import com.example.melon_monitoring_and_automation.ui.screen.splash.SplashScreen
 import com.example.melon_monitoring_and_automation.ui.viewmodel.AuthViewModel
@@ -208,54 +204,6 @@ fun MainApp() {
             // CHANGE PASSWORD SCREEN - Password management untuk logged-in user
             composable(Screen.ChangePassword.route) {
                 ChangePasswordScreen(navController = navController)
-            }
-
-            // DEVICE SETUP GUIDE SCREEN - Petunjuk setup device IoT
-            composable(Screen.DeviceSetupGuide.route) {
-                DeviceSetupGuideScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onStartPairing = {
-                        navController.navigate(Screen.DevicePairing.route)
-                    }
-                )
-            }
-
-            // DEVICE PAIRING SCREEN - Proses pairing device dengan aplikasi
-            composable(Screen.DevicePairing.route) {
-                DevicePairingScreen(
-                    navController = navController,
-                    onBackClick = { navController.popBackStack() },
-                    onDevicePaired = { greenhouseId ->
-                        navController.navigate("${Screen.GreenhouseDetail.route}/$greenhouseId") {
-                            popUpTo(Screen.GreenhouseDetail.route) { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-            // QR SCANNER SCREEN - Scan QR code untuk device pairing
-            composable(Screen.QRScanner.route) {
-                QRScannerScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onQRCodeScanned = { qrData ->
-                        // Process QR data dan kembali ke pairing screen dengan data
-                        navController.previousBackStackEntry?.savedStateHandle?.set(
-                            "scannedQRData", qrData
-                        )
-                        navController.popBackStack()
-                    }
-                )
-            }
-
-            // DEVICE LIST SCREEN - Daftar semua device yang terpair
-            composable(Screen.DeviceList.route) {
-                DeviceListScreen(
-                    navController = navController,
-                    onBackClick = { navController.popBackStack() },
-                    onAddDeviceClick = {
-                        navController.navigate(Screen.DeviceSetupGuide.route)
-                    }
-                )
             }
 
             composable(Screen.CreateGreenhouse.route) {

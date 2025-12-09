@@ -42,6 +42,7 @@ data class ControlDevices(
 data class SensorReadings(
     val id: String,
     @SerialName("greenhouse_id") val greenhouseId: String,
+    @SerialName("device_id") val deviceId: String? = null,
     val temperature: Double?,
     val humidity: Double?,
     @SerialName("water_temp") val waterTemp: Double?,
@@ -234,30 +235,9 @@ enum class DeviceType {
 }
 
 @Serializable
-data class DevicePairingRequest(
-    @SerialName("device_id") val deviceId: String,
-    @SerialName("pairing_code") val pairingCode: String,
-    @SerialName("greenhouse_id") val greenhouseId: String
-)
-
-@Serializable
 data class DeviceStatusUpdate(
     @SerialName("last_seen") val lastSeen: String,
     @SerialName("firmware_version") val firmwareVersion: String? = null
-)
-
-@Serializable
-data class DeviceTelemetryData(
-    @SerialName("device_id") val deviceId: String,
-    @SerialName("greenhouse_id") val greenhouseId: String,
-    val temperature: Double? = null,
-    val humidity: Double? = null,
-    @SerialName("water_temp") val waterTemp: Double? = null,
-    val ph: Double? = null,
-    val tds: Double? = null,
-    @SerialName("battery_level") val batteryLevel: Int? = null,
-    @SerialName("signal_strength") val signalStrength: Int? = null,
-    @SerialName("recorded_at") val recordedAt: String
 )
 
 @Serializable
@@ -276,28 +256,4 @@ data class SendDeviceCommand(
     @SerialName("device_id") val deviceId: String,
     val command: String,
     val payload: String? = null
-)
-
-// Response untuk pairing device
-@Serializable
-data class DevicePairingResponse(
-    val success: Boolean,
-    val message: String,
-    val device: IoTDevice? = null
-)
-
-// Response untuk device telemetry
-@Serializable
-data class DeviceTelemetryResponse(
-    val device: IoTDevice,
-    val telemetry: DeviceTelemetryData? = null,
-    @SerialName("last_reading") val lastReading: SensorReadings? = null
-)
-
-// Untuk list devices dengan pagination
-@Serializable
-data class DevicesListResponse(
-    val devices: List<IoTDevice>,
-    val count: Int,
-    @SerialName("total_count") val totalCount: Int
 )

@@ -187,26 +187,6 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * HANDLE DEEP LINK (LEGACY)
-     * Legacy method untuk handle deep link processing
-     * Note: Method ini tidak secara otomatis mark processed
-     */
-    private fun handleDeepLink(intent: Intent) {
-        val data = intent.data
-        if (data != null) {
-            println("🔹 [DEEP LINK] === DEEP LINK PROCESSING ===")
-            println("🔹 [DEEP LINK] Full URI: $data")
-
-            if (data.toString().contains("supabase.com")) {
-                println("🔹 [DEEP LINK] Supabase deep link detected")
-                pendingDeepLink = data
-                deepLinkProcessed = false // JANGAN langsung mark processed!
-                println("🔹 [DEEP LINK] Deep link saved for consumption")
-            }
-        }
-    }
-
-    /**
      * GET PENDING DEEP LINK INSTANCE
      * Mendapatkan pending deep link tanpa mengonsumsi/mark processed
      *

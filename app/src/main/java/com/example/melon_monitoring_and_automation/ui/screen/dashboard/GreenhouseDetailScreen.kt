@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -52,6 +54,7 @@ import com.example.melon_monitoring_and_automation.domain.model.SensorType
 import com.example.melon_monitoring_and_automation.domain.model.TimeRange
 import com.example.melon_monitoring_and_automation.ui.components.CustomDateRangeChip
 import com.example.melon_monitoring_and_automation.ui.components.DateRangePicker
+import com.example.melon_monitoring_and_automation.ui.components.DateUtils
 import com.example.melon_monitoring_and_automation.ui.components.SensorLineChart
 import com.example.melon_monitoring_and_automation.ui.viewmodel.ChartViewModel
 import com.example.melon_monitoring_and_automation.ui.viewmodel.GreenhouseViewModel
@@ -195,45 +198,98 @@ fun GreenhouseInfoSection(greenhouse: com.example.melon_monitoring_and_automatio
  * @param sensorReadings Data sensor terkini, atau null jika tidak tersedia
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SensorReadingsSection(sensorReadings: com.example.melon_monitoring_and_automation.domain.model.SensorReadings?) {
-    sensorReadings?.let { readings ->
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                // SECTION TITLE
-                Text(
-                    text = "Pembacaan Sensor Terkini",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF388E3C)
-                )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // SECTION TITLE
+            Text(
+                text = "Pembacaan Sensor Terkini",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF388E3C)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // LOGIC CHECK: Apakah data ada?
+            if (sensorReadings != null) {
+                // DATA ADA -> Tampilkan List
+                ReadingItem("Suhu Udara", formatValue(sensorReadings.temperature), "°C")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ReadingItem("Kelembapan", formatValue(sensorReadings.humidity), "%")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ReadingItem("Suhu Air", formatValue(sensorReadings.waterTemp), "°C")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ReadingItem("pH Air", formatValue(sensorReadings.ph), "pH")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ReadingItem("TDS (Nutrisi)", formatValue(sensorReadings.tds), "ppm")
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // TEMPERATURE READING
-                ReadingItem("Suhu Udara", readings.temperature?.toString() ?: "N/A", "°C")
-                Spacer(modifier = Modifier.height(8.dp))
+                val timeStr = DateUtils.formatToLocalTime(
+                    sensorReadings.recordedAt,
+                    "EEEE, dd MMMM HH:mm:ss" // Contoh: Senin, 08 Desember 10:45:00
+                )
 
-                // HUMIDITY READING
-                ReadingItem("Kelembapan", readings.humidity?.toString() ?: "N/A", "%")
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Terakhir diperbarui: $timeStr",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
 
-                // WATER TEMPERATURE READING
-                ReadingItem("Suhu Air", readings.waterTemp?.toString() ?: "N/A", "°C")
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // PH READING
-                ReadingItem("pH", readings.ph?.toString() ?: "N/A", "pH")
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // TDS READING
-                ReadingItem("TDS", readings.tds?.toString() ?: "N/A", "ppm")
+            } else {
+                // DATA KOSONG -> Tampilkan Pesan "Menunggu Data"
+                EmptySensorDataPlaceholder()
             }
         }
+    }
+}
+
+/**
+ * Helper untuk format value agar tidak crash/jelek saat null
+ */
+private fun formatValue(value: Double?): String {
+    return value?.let { "%.1f".format(it) } ?: "-"
+}
+
+@Composable
+fun EmptySensorDataPlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = "No Data",
+            tint = Color.LightGray,
+            modifier = Modifier.size(48.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Belum ada data sensor",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.Gray
+        )
+        Text(
+            text = "Pastikan perangkat IoT terhubung dan mengirim data.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -372,41 +428,43 @@ private fun SafeChartImplementation(greenhouseId: String) {
         viewModel.loadAvailableMonths(greenhouseId)
     }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // CHART CONTROLS - Dengan filter options
-            EnhancedChartControls(
-                selectedSensorType = chartConfig.selectedSensorType,
-                selectedTimeRange = chartConfig.timeRange,
-                customDateRange = chartConfig.customDateRange,
-                onSensorTypeChanged = { viewModel.updateSensorType(it) },
-                onTimeRangeChanged = { viewModel.updateTimeRange(it) },
-                onCustomRangeClicked = { viewModel.showDateRangePicker() }
-            )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // CHART CONTROLS - Dengan filter options
+        EnhancedChartControls(
+            selectedSensorType = chartConfig.selectedSensorType,
+            selectedTimeRange = chartConfig.timeRange,
+            customDateRange = chartConfig.customDateRange,
+            onSensorTypeChanged = { viewModel.updateSensorType(it) },
+            onTimeRangeChanged = { viewModel.updateTimeRange(it) },
+            onCustomRangeClicked = { viewModel.showDateRangePicker() }
+        )
 
-            // DATE RANGE PICKER OVERLAY
-            DateRangePicker(
-                showDateRangePicker = showDateRangePicker,
-                availableMonths = availableMonths,
-                selectedMonth = selectedMonth,
-                weeklyRanges = weeklyRanges,
-                selectedTimeRange = chartConfig.timeRange,
-                customDateRange = chartConfig.customDateRange,
-                onMonthSelected = { viewModel.selectMonth(it) },
-                onDateRangeSelected = { viewModel.updateCustomDateRange(it) },
-                onClose = { viewModel.hideDateRangePicker() },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
+        // DATE RANGE PICKER OVERLAY
+        DateRangePicker(
+            showDateRangePicker = showDateRangePicker,
+            availableMonths = availableMonths,
+            selectedMonth = selectedMonth,
+            weeklyRanges = weeklyRanges,
+            selectedTimeRange = chartConfig.timeRange,
+            customDateRange = chartConfig.customDateRange,
+            onMonthSelected = { viewModel.selectMonth(it) },
+            onDateRangeSelected = { viewModel.updateCustomDateRange(it) },
+            onClose = { viewModel.hideDateRangePicker() },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
 
-            // ERROR MESSAGES HANDLING
-            ChartErrorHandling(
-                viewModelError = errorMessage,
-                localError = chartError,
-                onDismissViewModelError = { viewModel.clearErrorMessage() },
-                onDismissLocalError = { chartError = null }
-            )
+        // ERROR MESSAGES HANDLING
+        ChartErrorHandling(
+            viewModelError = errorMessage,
+            localError = chartError,
+            onDismissViewModelError = { viewModel.clearErrorMessage() },
+            onDismissLocalError = { chartError = null }
+        )
 
-            // CHART CONTENT - Berdasarkan state current
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .height(350.dp)
+            .padding(horizontal = 8.dp)) {
             ChartContent(
                 isLoading = isLoading,
                 chartError = chartError,
@@ -550,13 +608,15 @@ fun EnhancedChartControls(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        Row(modifier = Modifier.fillMaxWidth()) {
-            SensorType.entries.forEach { sensorType ->
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(SensorType.entries) { sensorType ->
                 FilterChip(
                     selected = selectedSensorType == sensorType,
                     onClick = { onSensorTypeChanged(sensorType) },
-                    label = { Text(getSensorTypeDisplayName(sensorType)) },
-                    modifier = Modifier.padding(end = 8.dp)
+                    label = { Text(getSensorTypeDisplayName(sensorType)) }
                 )
             }
         }
@@ -569,28 +629,38 @@ fun EnhancedChartControls(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // PREDEFINED RANGES (exclude CUSTOM)
-            TimeRange.entries.forEach { timeRange ->
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(TimeRange.entries) { timeRange ->
                 if (timeRange != TimeRange.CUSTOM) {
                     FilterChip(
                         selected = selectedTimeRange == timeRange,
                         onClick = { onTimeRangeChanged(timeRange) },
                         label = {
-                            Text(
-                                getTimeRangeDisplayName(timeRange)
-                            )
-                        },
-                        modifier = Modifier.padding(end = 8.dp)
+                            Text(getTimeRangeDisplayName(timeRange))
+                        }
                     )
                 }
             }
 
-            // CUSTOM RANGE CHIP
-            CustomDateRangeChip(
-                isSelected = selectedTimeRange == TimeRange.CUSTOM,
-                customDateRange = customDateRange,
-                onClick = onCustomRangeClicked
+            item {
+                CustomDateRangeChip(
+                    isSelected = selectedTimeRange == TimeRange.CUSTOM,
+                    customDateRange = customDateRange,
+                    onClick = onCustomRangeClicked
+                )
+            }
+        }
+
+        if (selectedTimeRange == TimeRange.CUSTOM && customDateRange != null) {
+            Text(
+                text = "Rentang kustom: ${customDateRange.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF388E3C),
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
 
