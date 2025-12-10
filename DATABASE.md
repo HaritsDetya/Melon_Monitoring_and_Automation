@@ -1,9 +1,4 @@
-
-## 📄 **DATABASE.md** - Dokumentasi Teknis Database Supabase
-
-```markdown
 # 🗄️ **Supabase Database Documentation**
-```
 
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-blue)
 ![RLS](https://img.shields.io/badge/Row%20Level%20Security-Enabled-green)
