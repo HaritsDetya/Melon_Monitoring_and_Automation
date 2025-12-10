@@ -61,591 +61,591 @@ D --> I[TDS]
 
 1. `users` - Tabel Pengguna
 
-**Purpose**: Menyimpan data profil pengguna (link dengan Supabase Auth)
-
-```sql
-CREATE TABLE public.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  phone_number TEXT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-**Field Details**:
-
-|    Column    |    	Type     | Required |      	Default      |             	Description             |
-|:------------:|:------------:|:--------:|:------------------:|:------------------------------------:|
-|      id      |     UUID     |    	✅    | 	gen_random_uuid() | 	Primary key, sync dengan auth.users |
-|   username   |     TEXT     |    	✅    |         	-         |       	Nama tampilan pengguna        |
-|    email     |     TEXT     |    	✅    |         	-         |       	Email unik untuk login        |
-| phone_number |    TEXT	     |    ❌     |       	NULL        |       	Nomor telepon opsional        |
-|  created_at  | TIMESTAMPTZ  |    ❌     |       	NOW()       |        	Timestamp registrasi         |
-
-**Indexes**:
-
-```sql
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_created_at ON users(created_at DESC);
-```
-
-> **Note**: Tabel ini HARUS disinkronisasi dengan auth.users. Saat user register di Auth, trigger harus membuat row di tabel ini.
+   **Purpose**: Menyimpan data profil pengguna (link dengan Supabase Auth)
+   
+   ```sql
+   CREATE TABLE public.users (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     username TEXT NOT NULL,
+     email TEXT NOT NULL UNIQUE,
+     phone_number TEXT NULL,
+     created_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Field Details**:
+   
+   |    Column    |    	Type     | Required |      	Default      |             	Description             |
+   |:------------:|:------------:|:--------:|:------------------:|:------------------------------------:|
+   |      id      |     UUID     |    	✅    | 	gen_random_uuid() | 	Primary key, sync dengan auth.users |
+   |   username   |     TEXT     |    	✅    |         	-         |       	Nama tampilan pengguna        |
+   |    email     |     TEXT     |    	✅    |         	-         |       	Email unik untuk login        |
+   | phone_number |    TEXT	     |    ❌     |       	NULL        |       	Nomor telepon opsional        |
+   |  created_at  | TIMESTAMPTZ  |    ❌     |       	NOW()       |        	Timestamp registrasi         |
+   
+   **Indexes**:
+   
+   ```sql
+   CREATE INDEX idx_users_email ON users(email);
+   CREATE INDEX idx_users_created_at ON users(created_at DESC);
+   ```
+   
+   > **Note**: Tabel ini HARUS disinkronisasi dengan auth.users. Saat user register di Auth, trigger harus membuat row di tabel ini.
 
 2. `greenhouses` - Data Greenhouse
 
-**Purpose**: Setiap greenhouse yang dimiliki/dikelola user
+   **Purpose**: Setiap greenhouse yang dimiliki/dikelola user
+   
+   ```sql
+   CREATE TABLE public.greenhouses (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     name TEXT NOT NULL,
+     location TEXT NOT NULL,
+     owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+     description TEXT NULL,
+     created_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Field Details**:
+   
+   |    Column     |     	Type     |  	Required  |     	Constraint     |                	Description                 |
+   |:-------------:|:-------------:|:-----------:|:-------------------:|:-------------------------------------------:|
+   |      id       |     	UUID     |     	✅      |    	PRIMARY KEY     |            	Unique greenhouse ID            |
+   |     name      |     	TEXT     |     	✅      |         	-          | 	Nama greenhouse (contoh: "Kebun Melon A")  |
+   |   location    |     	TEXT     |     	✅      |         	-          |            	Alamat/lokasi fisik             |
+   |   owner_id    |     	UUID     |     	❌      |    	FOREIGN KEY     |             	Pemilik greenhouse             |
+   |  description  |     	TEXT     |     	❌      |         	-          |             	Deskripsi tambahan             |
+   |  created_at   | 	TIMESTAMPTZ  |     	❌      |   	DEFAULT NOW()    |              	Waktu pembuatan               |
 
-```sql
-CREATE TABLE public.greenhouses (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  location TEXT NOT NULL,
-  owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  description TEXT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+   **Business Rules**:
 
-**Field Details**:
-
-|    Column     |     	Type     |  	Required  |     	Constraint     |                	Description                 |
-|:-------------:|:-------------:|:-----------:|:-------------------:|:-------------------------------------------:|
-|      id       |     	UUID     |     	✅      |    	PRIMARY KEY     |            	Unique greenhouse ID            |
-|     name      |     	TEXT     |     	✅      |         	-          | 	Nama greenhouse (contoh: "Kebun Melon A")  |
-|   location    |     	TEXT     |     	✅      |         	-          |            	Alamat/lokasi fisik             |
-|   owner_id    |     	UUID     |     	❌      |    	FOREIGN KEY     |             	Pemilik greenhouse             |
-|  description  |     	TEXT     |     	❌      |         	-          |             	Deskripsi tambahan             |
-|  created_at   | 	TIMESTAMPTZ  |     	❌      |   	DEFAULT NOW()    |              	Waktu pembuatan               |
-
-**Business Rules**:
-
-* Satu user bisa memiliki banyak greenhouse
-* Saat user dihapus, semua greenhouse miliknya ikut terhapus (CASCADE)
-* Nama greenhouse harus unik per user (validasi di aplikasi)
+   * Satu user bisa memiliki banyak greenhouse
+   * Saat user dihapus, semua greenhouse miliknya ikut terhapus (CASCADE)
+   * Nama greenhouse harus unik per user (validasi di aplikasi)
 
 3. `sensor_readings` - Pembacaan Sensor Terkini
 
-**Purpose**: Menyimpan data sensor terbaru untuk fast query
+   **Purpose**: Menyimpan data sensor terbaru untuk fast query
+   
+   ```sql
+   CREATE TABLE public.sensor_readings (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     greenhouse_id UUID REFERENCES greenhouses(id) ON DELETE CASCADE,
+     temperature DOUBLE PRECISION NULL,      -- °C
+     humidity DOUBLE PRECISION NULL,         -- %
+     water_temp DOUBLE PRECISION NULL,       -- °C  
+     ph DOUBLE PRECISION NULL,               -- 0-14 scale
+     tds DOUBLE PRECISION NULL,              -- ppm
+     recorded_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Sensor Specifications**:
+   
+   |  Parameter   |   	Range    |    	Unit     |     	Sensor Type     | 	Accuracy  |
+   |:------------:|:-----------:|:------------:|:--------------------:|:----------:|
+   | temperature  | 	-40 to 80  |     	°C      |        	DHT22        |  	±0.5°C   |
+   |  humidity	   |   0-100	    |      %	      |        DHT22	        |    ±2%     |
+   |  water_temp  |   	0-100    |     	°C      |       	DS18B20       |  	±0.5°C   |
+   |     ph	      |    0-14	    |     pH	      |      PH-4502C	       |    ±0.1    |
+   |     tds      |   	0-1000   |     	ppm     |      	TDS Meter      |    	±5%    |
+   
+   **Performance Optimizations**:
 
-```sql
-CREATE TABLE public.sensor_readings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  greenhouse_id UUID REFERENCES greenhouses(id) ON DELETE CASCADE,
-  temperature DOUBLE PRECISION NULL,      -- °C
-  humidity DOUBLE PRECISION NULL,         -- %
-  water_temp DOUBLE PRECISION NULL,       -- °C  
-  ph DOUBLE PRECISION NULL,               -- 0-14 scale
-  tds DOUBLE PRECISION NULL,              -- ppm
-  recorded_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-**Sensor Specifications**:
-
-|  Parameter   |   	Range    |    	Unit     |     	Sensor Type     | 	Accuracy  |
-|:------------:|:-----------:|:------------:|:--------------------:|:----------:|
-| temperature  | 	-40 to 80  |     	°C      |        	DHT22        |  	±0.5°C   |
-|  humidity	   |   0-100	    |      %	      |        DHT22	        |    ±2%     |
-|  water_temp  |   	0-100    |     	°C      |       	DS18B20       |  	±0.5°C   |
-|     ph	      |    0-14	    |     pH	      |      PH-4502C	       |    ±0.1    |
-|     tds      |   	0-1000   |     	ppm     |      	TDS Meter      |    	±5%    |
-
-**Performance Optimizations**:
-
-```sql
--- Index untuk query berdasarkan greenhouse
-CREATE INDEX idx_greenhouse_id_readings ON sensor_readings(greenhouse_id);
-
--- Index untuk query data terbaru
-CREATE INDEX idx_readings_recorded ON sensor_readings(recorded_at DESC);
-
--- Retention policy (opsional)
--- DELETE FROM sensor_readings WHERE recorded_at < NOW() - INTERVAL '7 days';
-```
+   ```sql
+   -- Index untuk query berdasarkan greenhouse
+   CREATE INDEX idx_greenhouse_id_readings ON sensor_readings(greenhouse_id);
+   
+   -- Index untuk query data terbaru
+   CREATE INDEX idx_readings_recorded ON sensor_readings(recorded_at DESC);
+   
+   -- Retention policy (opsional)
+   -- DELETE FROM sensor_readings WHERE recorded_at < NOW() - INTERVAL '7 days';
+   ```
 
 4. `sensor_history` - Riwayat Time-series
 
-**Purpose**: Penyimpanan optimasi untuk data historis (grafik, analytics)
-
-```sql
-CREATE TABLE public.sensor_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  greenhouse_id UUID REFERENCES greenhouses(id) ON DELETE CASCADE,
-  sensor_type TEXT NOT NULL CHECK (
-    sensor_type IN ('TEMPERATURE', 'HUMIDITY', 'WATER_TEMPERATURE', 'PH', 'TDS')
-  ),
-  value DOUBLE PRECISION NOT NULL,
-  recorded_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-**Table Partitioning Strategy (Recommended untuk production)**:
-
-```sql
--- Create monthly partitions untuk performa
-CREATE TABLE sensor_history_y2024m11 PARTITION OF sensor_history
-FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
-
--- Index untuk setiap partition
-CREATE INDEX idx_history_y2024m11_greenhouse ON sensor_history_y2024m11(greenhouse_id);
-CREATE INDEX idx_history_y2024m11_type ON sensor_history_y2024m11(sensor_type);
-CREATE INDEX idx_history_y2024m11_time ON sensor_history_y2024m11(recorded_at);
-```
-
-**Indexes for Analytics Queries**:
-
-```sql
--- Query: Get temperature history for last 24 hours
-CREATE INDEX idx_sensor_history_greenhouse_type ON sensor_history(greenhouse_id, sensor_type);
-
--- Query: Get all sensors at specific time range  
-CREATE INDEX idx_sensor_history_recorded_at ON sensor_history(recorded_at);
-
--- Query: Dashboard aggregated data
-CREATE INDEX idx_sensor_history_greenhouse_recorded ON sensor_history(greenhouse_id, recorded_at);
-```
+   **Purpose**: Penyimpanan optimasi untuk data historis (grafik, analytics)
+   
+   ```sql
+   CREATE TABLE public.sensor_history (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     greenhouse_id UUID REFERENCES greenhouses(id) ON DELETE CASCADE,
+     sensor_type TEXT NOT NULL CHECK (
+       sensor_type IN ('TEMPERATURE', 'HUMIDITY', 'WATER_TEMPERATURE', 'PH', 'TDS')
+     ),
+     value DOUBLE PRECISION NOT NULL,
+     recorded_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Table Partitioning Strategy (Recommended untuk production)**:
+   
+   ```sql
+   -- Create monthly partitions untuk performa
+   CREATE TABLE sensor_history_y2024m11 PARTITION OF sensor_history
+   FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
+   
+   -- Index untuk setiap partition
+   CREATE INDEX idx_history_y2024m11_greenhouse ON sensor_history_y2024m11(greenhouse_id);
+   CREATE INDEX idx_history_y2024m11_type ON sensor_history_y2024m11(sensor_type);
+   CREATE INDEX idx_history_y2024m11_time ON sensor_history_y2024m11(recorded_at);
+   ```
+   
+   **Indexes for Analytics Queries**:
+   
+   ```sql
+   -- Query: Get temperature history for last 24 hours
+   CREATE INDEX idx_sensor_history_greenhouse_type ON sensor_history(greenhouse_id, sensor_type);
+   
+   -- Query: Get all sensors at specific time range  
+   CREATE INDEX idx_sensor_history_recorded_at ON sensor_history(recorded_at);
+   
+   -- Query: Dashboard aggregated data
+   CREATE INDEX idx_sensor_history_greenhouse_recorded ON sensor_history(greenhouse_id, recorded_at);
+   ```
 
 5. `iot_devices` - Manajemen Perangkat IoT
 
-**Purpose**: Registry dan pairing perangkat IoT
+   **Purpose**: Registry dan pairing perangkat IoT
+   
+   ```sql
+   CREATE TABLE public.iot_devices (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     device_id VARCHAR(50) UNIQUE NOT NULL,      -- MAC address atau ID unik
+     serial_number VARCHAR(100) UNIQUE NOT NULL, -- Serial number hardware
+     device_name VARCHAR(100) NULL,              -- Nama custom
+     device_type VARCHAR(50) DEFAULT 'HYDROPONIC_SENSOR',
+     greenhouse_id UUID REFERENCES greenhouses(id),
+     pairing_code VARCHAR(6) NOT NULL,           -- Kode 6 digit untuk pairing
+     is_paired BOOLEAN DEFAULT FALSE,
+     paired_at TIMESTAMPTZ NULL,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     last_seen TIMESTAMPTZ NULL,                 -- Last heartbeat
+     firmware_version VARCHAR(20) NULL,
+     encryption_key VARCHAR(100) NULL            -- Untuk komunikasi encrypted
+   );
+   ```
+   
+   **Device Pairing Flow**:
+   
+   ```text
+   1. Device dibuat di database dengan is_paired = false
+   2. Device menampilkan pairing_code di LCD/serial
+   3. User masukkkan kode di aplikasi
+   4. Aplikasi call API untuk pair device dengan greenhouse
+   5. System update: is_paired = true, paired_at = NOW(), greenhouse_id = [id]
+   6. Device bisa mulai mengirim data
+   ```
 
-```sql
-CREATE TABLE public.iot_devices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  device_id VARCHAR(50) UNIQUE NOT NULL,      -- MAC address atau ID unik
-  serial_number VARCHAR(100) UNIQUE NOT NULL, -- Serial number hardware
-  device_name VARCHAR(100) NULL,              -- Nama custom
-  device_type VARCHAR(50) DEFAULT 'HYDROPONIC_SENSOR',
-  greenhouse_id UUID REFERENCES greenhouses(id),
-  pairing_code VARCHAR(6) NOT NULL,           -- Kode 6 digit untuk pairing
-  is_paired BOOLEAN DEFAULT FALSE,
-  paired_at TIMESTAMPTZ NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  last_seen TIMESTAMPTZ NULL,                 -- Last heartbeat
-  firmware_version VARCHAR(20) NULL,
-  encryption_key VARCHAR(100) NULL            -- Untuk komunikasi encrypted
-);
-```
+   **Security Notes**:
 
-**Device Pairing Flow**:
-
-```text
-1. Device dibuat di database dengan is_paired = false
-2. Device menampilkan pairing_code di LCD/serial
-3. User masukkkan kode di aplikasi
-4. Aplikasi call API untuk pair device dengan greenhouse
-5. System update: is_paired = true, paired_at = NOW(), greenhouse_id = [id]
-6. Device bisa mulai mengirim data
-```
-
-**Security Notes**:
-
-* encryption_key digunakan untuk encrypt data antara device-server
-* last_seen untuk monitoring device health
-* pairing_code expired setelah 10 menit (validasi di aplikasi)
+   * encryption_key digunakan untuk encrypt data antara device-server
+   * last_seen untuk monitoring device health
+   * pairing_code expired setelah 10 menit (validasi di aplikasi)
 
 6. `control_devices` - Status Kontrol Aktuator
 
-**Purpose**: State management untuk perangkat kontrol (relay)
-
-```sql
-CREATE TABLE public.control_devices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  greenhouse_id UUID UNIQUE REFERENCES greenhouses(id) ON DELETE CASCADE,
-  fan BOOLEAN DEFAULT FALSE,      -- Kipas ON/OFF
-  pump BOOLEAN DEFAULT FALSE,     -- Pompa air ON/OFF
-  auto_mode BOOLEAN DEFAULT FALSE, -- Mode otomatis ON/OFF
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-**Relay Specifications**:
-
-| Device | 	GPIO Pin | 	Current Rating |        	Purpose        |
-|:------:|:---------:|:---------------:|:----------------------:|
-|  Fan   |  	GPIO12  |      	10A       |    	Sirkulasi udara    |
-|  Pump  |  	GPIO13  |       	5A       | 	Sirkulasi air nutrisi |
-
-**State Transition Logic**:
-
-```sql
--- When auto_mode = TRUE:
--- - Fan ON when temperature > max_temperature
--- - Pump ON when TDS < threshold
--- - Both OFF when conditions normal
-
--- When auto_mode = FALSE:
--- - Manual control via app
--- - States persist until changed
-```
+   **Purpose**: State management untuk perangkat kontrol (relay)
+   
+   ```sql
+   CREATE TABLE public.control_devices (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     greenhouse_id UUID UNIQUE REFERENCES greenhouses(id) ON DELETE CASCADE,
+     fan BOOLEAN DEFAULT FALSE,      -- Kipas ON/OFF
+     pump BOOLEAN DEFAULT FALSE,     -- Pompa air ON/OFF
+     auto_mode BOOLEAN DEFAULT FALSE, -- Mode otomatis ON/OFF
+     updated_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Relay Specifications**:
+   
+   | Device | 	GPIO Pin | 	Current Rating |        	Purpose        |
+   |:------:|:---------:|:---------------:|:----------------------:|
+   |  Fan   |  	GPIO12  |      	10A       |    	Sirkulasi udara    |
+   |  Pump  |  	GPIO13  |       	5A       | 	Sirkulasi air nutrisi |
+   
+   **State Transition Logic**:
+   
+   ```sql
+   -- When auto_mode = TRUE:
+   -- - Fan ON when temperature > max_temperature
+   -- - Pump ON when TDS < threshold
+   -- - Both OFF when conditions normal
+   
+   -- When auto_mode = FALSE:
+   -- - Manual control via app
+   -- - States persist until changed
+   ```
 
 7. `automation_settings` - Pengaturan Otomatisasi
 
-**Purpose**: Configuration untuk logic otomatis
-
-```sql
-CREATE TABLE public.automation_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  greenhouse_id UUID UNIQUE REFERENCES greenhouses(id) ON DELETE CASCADE,
-  max_temperature DOUBLE PRECISION DEFAULT 38.0,   -- °C
-  min_temperature DOUBLE PRECISION DEFAULT 25.0,   -- °C  
-  nutrient_droplets INTEGER DEFAULT 10,            -- ml per hour
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-**Default Values (Optimal for Hydroponics)**:
-
-|     Parameter      | 	Default  |         	Min         | 	Max |  	Unit  |          	Description           |
-|:------------------:|:---------:|:--------------------:|:----:|:-------:|:-------------------------------:|
-|  max_temperature	  |   38.0	   |         20	          | 45	  |   °C	   | Fan akan ON jika suhu melebihi  |
-|  min_temperature   |   	25.0   |         	15          | 	35  |   	°C   | 	Fan akan OFF jika suhu dibawah |
-| nutrient_droplets	 |    10	    |          1	          | 50	  | ml/hour |     	Rate pemberian nutrisi     |
+   **Purpose**: Configuration untuk logic otomatis
+   
+   ```sql
+   CREATE TABLE public.automation_settings (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     greenhouse_id UUID UNIQUE REFERENCES greenhouses(id) ON DELETE CASCADE,
+     max_temperature DOUBLE PRECISION DEFAULT 38.0,   -- °C
+     min_temperature DOUBLE PRECISION DEFAULT 25.0,   -- °C  
+     nutrient_droplets INTEGER DEFAULT 10,            -- ml per hour
+     updated_at TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+   
+   **Default Values (Optimal for Hydroponics)**:
+   
+   |     Parameter      | 	Default  |         	Min         | 	Max |  	Unit  |          	Description           |
+   |:------------------:|:---------:|:--------------------:|:----:|:-------:|:-------------------------------:|
+   |  max_temperature	  |   38.0	   |         20	          | 45	  |   °C	   | Fan akan ON jika suhu melebihi  |
+   |  min_temperature   |   	25.0   |         	15          | 	35  |   	°C   | 	Fan akan OFF jika suhu dibawah |
+   | nutrient_droplets	 |    10	    |          1	          | 50	  | ml/hour |     	Rate pemberian nutrisi     |
 
 ## 🔗 **Relationships (ERD)**
-
-```erDiagram
-    users ||--o{ greenhouses : owns
-    users ||--o{ greenhouse_members : "member of"
-    
-    greenhouses ||--o{ sensor_readings : "has current"
-    greenhouses ||--o{ sensor_history : "has history"
-    greenhouses ||--|| iot_devices : "contains"
-    greenhouses ||--|| control_devices : "controls"
-    greenhouses ||--|| automation_settings : "configures"
-    
-    sensor_readings ||--o{ sensor_history : "archived to"
-    
-    users {
-        uuid id PK
-        string username
-        string email UK
-        timestamp created_at
-    }
-    
-    greenhouses {
-        uuid id PK
-        string name
-        uuid owner_id FK
-        timestamp created_at
-    }
-    
-    sensor_readings {
-        uuid id PK
-        uuid greenhouse_id FK
-        float temperature
-        float humidity
-        float water_temp
-        float ph
-        float tds
-        timestamp recorded_at
-    }
-    
-    sensor_history {
-        uuid id PK
-        uuid greenhouse_id FK
-        string sensor_type
-        float value
-        timestamp recorded_at
-    }
-    
-    iot_devices {
-        uuid id PK
-        string device_id UK
-        string serial_number UK
-        uuid greenhouse_id FK
-        string pairing_code
-        boolean is_paired
-        timestamp paired_at
-    }
-    
-    control_devices {
-        uuid id PK
-        uuid greenhouse_id FK
-        boolean fan
-        boolean pump
-        boolean auto_mode
-        timestamp updated_at
-    }
-    
-    automation_settings {
-        uuid id PK
-        uuid greenhouse_id FK
-        float max_temperature
-        float min_temperature
-        integer nutrient_droplets
-        timestamp updated_at
-    }
-```
-
-**Cardinality Rules**:
-
-* 1 User → N Greenhouses (One-to-Many)
-* 1 Greenhouse → 1 Control Device (One-to-One)
-* 1 Greenhouse → 1 Automation Settings (One-to-One)
-* 1 Greenhouse → N IoT Devices (One-to-Many)
-* 1 Greenhouse → N Sensor Readings (One-to-Many)
-* 1 Greenhouse → N Sensor History (One-to-Many)
+   
+   ```erDiagram
+       users ||--o{ greenhouses : owns
+       users ||--o{ greenhouse_members : "member of"
+       
+       greenhouses ||--o{ sensor_readings : "has current"
+       greenhouses ||--o{ sensor_history : "has history"
+       greenhouses ||--|| iot_devices : "contains"
+       greenhouses ||--|| control_devices : "controls"
+       greenhouses ||--|| automation_settings : "configures"
+       
+       sensor_readings ||--o{ sensor_history : "archived to"
+       
+       users {
+           uuid id PK
+           string username
+           string email UK
+           timestamp created_at
+       }
+       
+       greenhouses {
+           uuid id PK
+           string name
+           uuid owner_id FK
+           timestamp created_at
+       }
+       
+       sensor_readings {
+           uuid id PK
+           uuid greenhouse_id FK
+           float temperature
+           float humidity
+           float water_temp
+           float ph
+           float tds
+           timestamp recorded_at
+       }
+       
+       sensor_history {
+           uuid id PK
+           uuid greenhouse_id FK
+           string sensor_type
+           float value
+           timestamp recorded_at
+       }
+       
+       iot_devices {
+           uuid id PK
+           string device_id UK
+           string serial_number UK
+           uuid greenhouse_id FK
+           string pairing_code
+           boolean is_paired
+           timestamp paired_at
+       }
+       
+       control_devices {
+           uuid id PK
+           uuid greenhouse_id FK
+           boolean fan
+           boolean pump
+           boolean auto_mode
+           timestamp updated_at
+       }
+       
+       automation_settings {
+           uuid id PK
+           uuid greenhouse_id FK
+           float max_temperature
+           float min_temperature
+           integer nutrient_droplets
+           timestamp updated_at
+       }
+   ```
+   
+   **Cardinality Rules**:
+   
+   * 1 User → N Greenhouses (One-to-Many)
+     * 1 Greenhouse → 1 Control Device (One-to-One)
+     * 1 Greenhouse → 1 Automation Settings (One-to-One)
+     * 1 Greenhouse → N IoT Devices (One-to-Many)
+     * 1 Greenhouse → N Sensor Readings (One-to-Many)
+     * 1 Greenhouse → N Sensor History (One-to-Many)
 
 ## ⚙️ **Database Functions**
 
 1. `create_greenhouse_default_data()`
 
-**Type**: Trigger Function
-**Called By**: after_greenhouse_created trigger
-
-```sql
-CREATE OR REPLACE FUNCTION create_greenhouse_default_data()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- 1. Create default automation settings
-    INSERT INTO automation_settings (
-        id, greenhouse_id, max_temperature, 
-        min_temperature, nutrient_droplets, updated_at
-    ) VALUES (
-        gen_random_uuid(), NEW.id, 38.0, 25.0, 10, NOW()
-    );
-
-    -- 2. Create default control device state
-    INSERT INTO control_devices (
-        id, greenhouse_id, fan, pump, auto_mode, updated_at
-    ) VALUES (
-        gen_random_uuid(), NEW.id, FALSE, FALSE, FALSE, NOW()
-    );
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-**Usage**:
-
-```sql
--- Create trigger
-CREATE TRIGGER after_greenhouse_created
-AFTER INSERT ON greenhouses
-FOR EACH ROW
-EXECUTE FUNCTION create_greenhouse_default_data();
-```
+   **Type**: Trigger Function
+   **Called By**: after_greenhouse_created trigger
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION create_greenhouse_default_data()
+   RETURNS TRIGGER AS $$
+   BEGIN
+       -- 1. Create default automation settings
+       INSERT INTO automation_settings (
+           id, greenhouse_id, max_temperature, 
+           min_temperature, nutrient_droplets, updated_at
+       ) VALUES (
+           gen_random_uuid(), NEW.id, 38.0, 25.0, 10, NOW()
+       );
+   
+       -- 2. Create default control device state
+       INSERT INTO control_devices (
+           id, greenhouse_id, fan, pump, auto_mode, updated_at
+       ) VALUES (
+           gen_random_uuid(), NEW.id, FALSE, FALSE, FALSE, NOW()
+       );
+   
+       RETURN NEW;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
+   
+   **Usage**:
+   
+   ```sql
+   -- Create trigger
+   CREATE TRIGGER after_greenhouse_created
+   AFTER INSERT ON greenhouses
+   FOR EACH ROW
+   EXECUTE FUNCTION create_greenhouse_default_data();
+   ```
 
 2. `trigger_copy_to_history()`
 
-**Type**: Trigger Function
-**Purpose**: Panggil Edge Function untuk archive data
-
-```sql
-CREATE OR REPLACE FUNCTION trigger_copy_to_history()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Call Edge Function via HTTP
-    PERFORM net.http_post(
-        url := 'https://your-project.supabase.co/functions/v1/copy-to-history',
-        headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
-        ),
-        body := jsonb_build_object('record', NEW)::text
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+   **Type**: Trigger Function
+   **Purpose**: Panggil Edge Function untuk archive data
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION trigger_copy_to_history()
+   RETURNS TRIGGER AS $$
+   BEGIN
+       -- Call Edge Function via HTTP
+       PERFORM net.http_post(
+           url := 'https://your-project.supabase.co/functions/v1/copy-to-history',
+           headers := jsonb_build_object(
+               'Content-Type', 'application/json',
+               'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+           ),
+           body := jsonb_build_object('record', NEW)::text
+       );
+       RETURN NEW;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
 
 3. `delete_user_completely(user_id UUID)`
 
-**Type**: Stored Procedure
-**Purpose**: Delete cascade semua data user
-
-```sql
-CREATE OR REPLACE FUNCTION delete_user_completely(user_id UUID)
-RETURNS VOID AS $$
-BEGIN
-    -- Delete dalam urutan yang benar (child ke parent)
-    DELETE FROM sensor_readings 
-    WHERE greenhouse_id IN (
-        SELECT id FROM greenhouses WHERE owner_id = user_id
-    );
-    
-    DELETE FROM sensor_history 
-    WHERE greenhouse_id IN (
-        SELECT id FROM greenhouses WHERE owner_id = user_id
-    );
-    
-    DELETE FROM control_devices 
-    WHERE greenhouse_id IN (
-        SELECT id FROM greenhouses WHERE owner_id = user_id
-    );
-    
-    DELETE FROM automation_settings 
-    WHERE greenhouse_id IN (
-        SELECT id FROM greenhouses WHERE owner_id = user_id
-    );
-    
-    DELETE FROM iot_devices 
-    WHERE greenhouse_id IN (
-        SELECT id FROM greenhouses WHERE owner_id = user_id
-    );
-    
-    DELETE FROM greenhouses WHERE owner_id = user_id;
-    DELETE FROM users WHERE id = user_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-**Execution**:
-
-```sql
--- Call dari Edge Function
-SELECT delete_user_completely('user-uuid-here');
-
--- Atau via REST API
-POST /rest/v1/rpc/delete_user_completely
-{
-    "user_id": "uuid-here"
-}
-```
+   **Type**: Stored Procedure
+   **Purpose**: Delete cascade semua data user
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION delete_user_completely(user_id UUID)
+   RETURNS VOID AS $$
+   BEGIN
+       -- Delete dalam urutan yang benar (child ke parent)
+       DELETE FROM sensor_readings 
+       WHERE greenhouse_id IN (
+           SELECT id FROM greenhouses WHERE owner_id = user_id
+       );
+       
+       DELETE FROM sensor_history 
+       WHERE greenhouse_id IN (
+           SELECT id FROM greenhouses WHERE owner_id = user_id
+       );
+       
+       DELETE FROM control_devices 
+       WHERE greenhouse_id IN (
+           SELECT id FROM greenhouses WHERE owner_id = user_id
+       );
+       
+       DELETE FROM automation_settings 
+       WHERE greenhouse_id IN (
+           SELECT id FROM greenhouses WHERE owner_id = user_id
+       );
+       
+       DELETE FROM iot_devices 
+       WHERE greenhouse_id IN (
+           SELECT id FROM greenhouses WHERE owner_id = user_id
+       );
+       
+       DELETE FROM greenhouses WHERE owner_id = user_id;
+       DELETE FROM users WHERE id = user_id;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
+   
+   **Execution**:
+   
+   ```sql
+   -- Call dari Edge Function
+   SELECT delete_user_completely('user-uuid-here');
+   
+   -- Atau via REST API
+   POST /rest/v1/rpc/delete_user_completely
+   {
+       "user_id": "uuid-here"
+   }
+   ```
 
 4. `is_greenhouse_member(gh_id UUID)`
 
-**Type**: Helper Function
-**Purpose**: Validasi user membership
-
-```sql
-CREATE OR REPLACE FUNCTION is_greenhouse_member(gh_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-    RETURN EXISTS (
-        SELECT 1 FROM greenhouse_members 
-        WHERE greenhouse_id = gh_id 
-        AND user_id = auth.uid()
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+   **Type**: Helper Function
+   **Purpose**: Validasi user membership
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION is_greenhouse_member(gh_id UUID)
+   RETURNS BOOLEAN AS $$
+   BEGIN
+       RETURN EXISTS (
+           SELECT 1 FROM greenhouse_members 
+           WHERE greenhouse_id = gh_id 
+           AND user_id = auth.uid()
+       );
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
 
 5. `create_access_code(p_greenhouse_id UUID, p_duration INTERVAL)`
 
-**Type**: Utility Function
-**Purpose**: Generate kode akses untuk join greenhouse
-
-```sql
-CREATE OR REPLACE FUNCTION create_access_code(
-    p_greenhouse_id UUID, 
-    p_duration INTERVAL DEFAULT '24 hours'
-)
-RETURNS TEXT AS $$
-DECLARE
-    new_code TEXT;
-    expires_at TIMESTAMPTZ;
-BEGIN
-    -- Authorization check
-    IF NOT is_greenhouse_member(p_greenhouse_id) THEN
-        RAISE EXCEPTION 'Access denied: Not a greenhouse member';
-    END IF;
-
-    expires_at := NOW() + p_duration;
-
-    -- Generate unique 6-char alphanumeric code
-    LOOP
-        SELECT array_to_string(
-            ARRAY(
-                SELECT chr((48 + round(random() * 9))::integer)
-                FROM generate_series(1, 3)
-            ) || 
-            ARRAY(
-                SELECT chr((65 + round(random() * 25))::integer)
-                FROM generate_series(1, 3)
-            ), ''
-        ) INTO new_code;
-        
-        EXIT WHEN NOT EXISTS (
-            SELECT 1 FROM access_codes 
-            WHERE code = new_code 
-            AND expires_at > NOW()
-        );
-    END LOOP;
-
-    -- Insert new code
-    INSERT INTO access_codes (code, greenhouse_id, creator_id, expires_at)
-    VALUES (new_code, p_greenhouse_id, auth.uid(), expires_at);
-
-    RETURN new_code;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+   **Type**: Utility Function
+   **Purpose**: Generate kode akses untuk join greenhouse
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION create_access_code(
+       p_greenhouse_id UUID, 
+       p_duration INTERVAL DEFAULT '24 hours'
+   )
+   RETURNS TEXT AS $$
+   DECLARE
+       new_code TEXT;
+       expires_at TIMESTAMPTZ;
+   BEGIN
+       -- Authorization check
+       IF NOT is_greenhouse_member(p_greenhouse_id) THEN
+           RAISE EXCEPTION 'Access denied: Not a greenhouse member';
+       END IF;
+   
+       expires_at := NOW() + p_duration;
+   
+       -- Generate unique 6-char alphanumeric code
+       LOOP
+           SELECT array_to_string(
+               ARRAY(
+                   SELECT chr((48 + round(random() * 9))::integer)
+                   FROM generate_series(1, 3)
+               ) || 
+               ARRAY(
+                   SELECT chr((65 + round(random() * 25))::integer)
+                   FROM generate_series(1, 3)
+               ), ''
+           ) INTO new_code;
+           
+           EXIT WHEN NOT EXISTS (
+               SELECT 1 FROM access_codes 
+               WHERE code = new_code 
+               AND expires_at > NOW()
+           );
+       END LOOP;
+   
+       -- Insert new code
+       INSERT INTO access_codes (code, greenhouse_id, creator_id, expires_at)
+       VALUES (new_code, p_greenhouse_id, auth.uid(), expires_at);
+   
+       RETURN new_code;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
 
 6. `verify_and_join_greenhouse(p_access_code TEXT)`
 
-**Type**: Action Function
-**Purpose**: Validasi kode dan tambah user ke greenhouse
-
-```sql
-CREATE OR REPLACE FUNCTION verify_and_join_greenhouse(p_access_code TEXT)
-RETURNS JSONB AS $$
-DECLARE
-    v_code_record access_codes%ROWTYPE;
-    v_greenhouse_name TEXT;
-    v_user_id UUID := auth.uid();
-BEGIN
-    -- Authentication check
-    IF v_user_id IS NULL THEN
-        RETURN jsonb_build_object(
-            'status', 'error',
-            'message', 'User not authenticated'
-        );
-    END IF;
-
-    -- Find valid code
-    SELECT * INTO v_code_record
-    FROM access_codes
-    WHERE code = p_access_code
-    AND expires_at > NOW()
-    AND NOT is_used;
-
-    IF NOT FOUND THEN
-        RETURN jsonb_build_object(
-            'status', 'error',
-            'message', 'Invalid or expired access code'
-        );
-    END IF;
-
-    -- Check if already member
-    IF EXISTS (
-        SELECT 1 FROM greenhouse_members 
-        WHERE greenhouse_id = v_code_record.greenhouse_id 
-        AND user_id = v_user_id
-    ) THEN
-        UPDATE access_codes SET is_used = TRUE 
-        WHERE code = p_access_code;
-        
-        RETURN jsonb_build_object(
-            'status', 'info',
-            'message', 'Already a member of this greenhouse'
-        );
-    END IF;
-
-    -- Add as member
-    INSERT INTO greenhouse_members (greenhouse_id, user_id, role)
-    VALUES (v_code_record.greenhouse_id, v_user_id, 'member');
-
-    -- Mark code as used
-    UPDATE access_codes SET is_used = TRUE WHERE code = p_access_code;
-
-    -- Get greenhouse name for response
-    SELECT name INTO v_greenhouse_name 
-    FROM greenhouses 
-    WHERE id = v_code_record.greenhouse_id;
-
-    RETURN jsonb_build_object(
-        'status', 'success',
-        'message', 'Successfully joined greenhouse',
-        'greenhouse_name', v_greenhouse_name,
-        'greenhouse_id', v_code_record.greenhouse_id
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+   **Type**: Action Function
+   **Purpose**: Validasi kode dan tambah user ke greenhouse
+   
+   ```sql
+   CREATE OR REPLACE FUNCTION verify_and_join_greenhouse(p_access_code TEXT)
+   RETURNS JSONB AS $$
+   DECLARE
+       v_code_record access_codes%ROWTYPE;
+       v_greenhouse_name TEXT;
+       v_user_id UUID := auth.uid();
+   BEGIN
+       -- Authentication check
+       IF v_user_id IS NULL THEN
+           RETURN jsonb_build_object(
+               'status', 'error',
+               'message', 'User not authenticated'
+           );
+       END IF;
+   
+       -- Find valid code
+       SELECT * INTO v_code_record
+       FROM access_codes
+       WHERE code = p_access_code
+       AND expires_at > NOW()
+       AND NOT is_used;
+   
+       IF NOT FOUND THEN
+           RETURN jsonb_build_object(
+               'status', 'error',
+               'message', 'Invalid or expired access code'
+           );
+       END IF;
+   
+       -- Check if already member
+       IF EXISTS (
+           SELECT 1 FROM greenhouse_members 
+           WHERE greenhouse_id = v_code_record.greenhouse_id 
+           AND user_id = v_user_id
+       ) THEN
+           UPDATE access_codes SET is_used = TRUE 
+           WHERE code = p_access_code;
+           
+           RETURN jsonb_build_object(
+               'status', 'info',
+               'message', 'Already a member of this greenhouse'
+           );
+       END IF;
+   
+       -- Add as member
+       INSERT INTO greenhouse_members (greenhouse_id, user_id, role)
+       VALUES (v_code_record.greenhouse_id, v_user_id, 'member');
+   
+       -- Mark code as used
+       UPDATE access_codes SET is_used = TRUE WHERE code = p_access_code;
+   
+       -- Get greenhouse name for response
+       SELECT name INTO v_greenhouse_name 
+       FROM greenhouses 
+       WHERE id = v_code_record.greenhouse_id;
+   
+       RETURN jsonb_build_object(
+           'status', 'success',
+           'message', 'Successfully joined greenhouse',
+           'greenhouse_name', v_greenhouse_name,
+           'greenhouse_id', v_code_record.greenhouse_id
+       );
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
 
 ## 🔐 **Row Level Security Policies**
 
@@ -794,80 +794,80 @@ FOR UPDATE USING (
 
 1. `after_greenhouse_created`
 
-**Table**: `greenhouses`
-**Timing**: `AFTER INSERT`
-**Function**: `create_greenhouse_default_data()`
-
-```sql
-CREATE TRIGGER after_greenhouse_created
-AFTER INSERT ON greenhouses
-FOR EACH ROW
-EXECUTE FUNCTION create_greenhouse_default_data();
-```
-
-**Purpose**: Otomatis membuat default settings saat greenhouse baru dibuat
+   **Table**: `greenhouses`
+   **Timing**: `AFTER INSERT`
+   **Function**: `create_greenhouse_default_data()`
+   
+   ```sql
+   CREATE TRIGGER after_greenhouse_created
+   AFTER INSERT ON greenhouses
+   FOR EACH ROW
+   EXECUTE FUNCTION create_greenhouse_default_data();
+   ```
+   
+   **Purpose**: Otomatis membuat default settings saat greenhouse baru dibuat
 
 2. `on_sensor_reading_inserted`
 
-**Table**: `sensor_readings`
-**Timing**: `AFTER INSERT`
-**Function**: `trigger_copy_to_history()`
-
-```sql
-CREATE TRIGGER on_sensor_reading_inserted
-AFTER INSERT ON sensor_readings
-FOR EACH ROW
-EXECUTE FUNCTION trigger_copy_to_history();
-```
-
-**Purpose**: Archive data ke tabel history via Edge Function
+   **Table**: `sensor_readings`
+   **Timing**: `AFTER INSERT`
+   **Function**: `trigger_copy_to_history()`
+   
+   ```sql
+   CREATE TRIGGER on_sensor_reading_inserted
+   AFTER INSERT ON sensor_readings
+   FOR EACH ROW
+   EXECUTE FUNCTION trigger_copy_to_history();
+   ```
+   
+   **Purpose**: Archive data ke tabel history via Edge Function
 
 ## 🌐 **Edge Functions**
 
 1. `copy-to-history`
 
-**Endpoint**: `https://[project].supabase.co/functions/v1/copy-to-history`
-**Trigger**: Database trigger `on_sensor_reading_inserted`
-
-```typescript
-// Function: Memisahkan data sensor menjadi multiple rows di history
-// Input: { record: { greenhouse_id, temperature, humidity, ... } }
-// Output: 5 rows inserted ke sensor_history (satu per sensor type)
-```
-
-**Deployment**:
-
-```bash
-supabase functions deploy copy-to-history --project-ref your-project-ref
-```
-
-**Environment Variables**:
-
-```bash
-# Set in Supabase Dashboard → Settings → API → Edge Functions
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+   **Endpoint**: `https://[project].supabase.co/functions/v1/copy-to-history`
+   **Trigger**: Database trigger `on_sensor_reading_inserted`
+   
+   ```typescript
+   // Function: Memisahkan data sensor menjadi multiple rows di history
+   // Input: { record: { greenhouse_id, temperature, humidity, ... } }
+   // Output: 5 rows inserted ke sensor_history (satu per sensor type)
+   ```
+   
+   **Deployment**:
+   
+   ```bash
+   supabase functions deploy copy-to-history --project-ref your-project-ref
+   ```
+   
+   **Environment Variables**:
+   
+   ```bash
+   # Set in Supabase Dashboard → Settings → API → Edge Functions
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
 
 2. `delete-auth-account`
 
-**Endpoint**: `https://[project].supabase.co/functions/v1/delete-auth-account`
-**Headers**: `x-admin-secret: [secret]`
-
-```typescript
-// Function: Delete user dari Auth dan semua data terkait
-// Steps:
-// 1. Validate admin secret
-// 2. Call database function delete_user_completely()
-// 3. Delete from Supabase Auth
-// 4. Return success/failure
-```
-
-**Security Considerations**:
-* Require admin secret header
-* Validate UUID format
-* Comprehensive error handling
-* Log all deletion attempts
+   **Endpoint**: `https://[project].supabase.co/functions/v1/delete-auth-account`
+   **Headers**: `x-admin-secret: [secret]`
+   
+   ```typescript
+   // Function: Delete user dari Auth dan semua data terkait
+   // Steps:
+   // 1. Validate admin secret
+   // 2. Call database function delete_user_completely()
+   // 3. Delete from Supabase Auth
+   // 4. Return success/failure
+   ```
+   
+   **Security Considerations**:
+   * Require admin secret header
+   * Validate UUID format
+   * Comprehensive error handling
+   * Log all deletion attempts
 
 ## 🚀 **Setup Guide**
 
@@ -887,18 +887,18 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 1. **Enable Extensions**:
 
-```sql
-CREATE EXTENSION IF NOT EXISTS "pg_net";
-CREATE EXTENSION IF NOT EXISTS "pg_cron";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-```
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS "pg_net";
+   CREATE EXTENSION IF NOT EXISTS "pg_cron";
+   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+   ```
 
 2. **Set Service Role Key for Triggers**:
 
-```sql
-ALTER DATABASE postgres 
-SET app.settings.service_role_key TO 'your-service-role-key';
-```
+   ```sql
+   ALTER DATABASE postgres 
+   SET app.settings.service_role_key TO 'your-service-role-key';
+   ```
 
 3. **Configure Realtime**:
 
@@ -994,54 +994,54 @@ ORDER BY recorded_at;
 
 1. **RLS Policy Violation**
 
-**Error**: `new row violates row-level security policy`
-
-**Solution**:
-```sql
--- Temporarily disable RLS for debugging
-ALTER TABLE table_name DISABLE ROW LEVEL SECURITY;
-
--- Check current policies
-SELECT * FROM pg_policies 
-WHERE tablename = 'table_name';
-
--- Test with service role
-SET ROLE service_role;
-SELECT * FROM table_name;
-RESET ROLE;
-```
+   **Error**: `new row violates row-level security policy`
+   
+   **Solution**:
+   ```sql
+   -- Temporarily disable RLS for debugging
+   ALTER TABLE table_name DISABLE ROW LEVEL SECURITY;
+   
+   -- Check current policies
+   SELECT * FROM pg_policies 
+   WHERE tablename = 'table_name';
+   
+   -- Test with service role
+   SET ROLE service_role;
+   SELECT * FROM table_name;
+   RESET ROLE;
+   ```
 
 2. **Trigger Not Firing**
 
-**Debug Steps**:
-```sql
--- Check trigger status
-SELECT 
-    tgname as trigger_name,
-    tgisinternal as is_internal,
-    tgenabled as enabled
-FROM pg_trigger 
-WHERE tgrelid = 'sensor_readings'::regclass;
-
--- Manual test
-INSERT INTO sensor_readings (...) VALUES (...);
-SELECT * FROM sensor_history ORDER BY recorded_at DESC LIMIT 5;
-```
+   **Debug Steps**:
+   ```sql
+   -- Check trigger status
+   SELECT 
+       tgname as trigger_name,
+       tgisinternal as is_internal,
+       tgenabled as enabled
+   FROM pg_trigger 
+   WHERE tgrelid = 'sensor_readings'::regclass;
+   
+   -- Manual test
+   INSERT INTO sensor_readings (...) VALUES (...);
+   SELECT * FROM sensor_history ORDER BY recorded_at DESC LIMIT 5;
+   ```
 
 3. **Edge Function Timeout**
 
-**Solution**:
-* Increase timeout in function config
-* Optimize database queries
-* Implement batching for large operations
+   **Solution**:
+   * Increase timeout in function config
+   * Optimize database queries
+   * Implement batching for large operations
 
 4. **Real-time Not Working**
 
-**Checklist**:
-* Table added to replication in Supabase dashboard
-* Client subscribed correctly
-* WebSocket connection established
-* No firewall blocking WebSocket
+   **Checklist**:
+   * Table added to replication in Supabase dashboard
+   * Client subscribed correctly
+   * WebSocket connection established
+   * No firewall blocking WebSocket
 
 ## 🔧 **Maintenance Scripts**
 
