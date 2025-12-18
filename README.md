@@ -153,37 +153,40 @@ Jalankan script SQL berikut di Supabase SQL Editor:
 4. Klik Run 'app' (Shift + F10)
 
 ## 📁 **Project Structure**
-```text
-app/
-├── src/main/
-│   ├── java/com/yourpackage/
-│   │   ├── data/                   # Data layer
-│   │   │   ├── local/             # Room database
-│   │   │   ├── remote/            # Supabase API
-│   │   │   └── repository/        # Repository implementations
-│   │   ├── domain/                # Domain layer
-│   │   │   ├── model/             # Business models
-│   │   │   ├── repository/        # Repository interfaces
-│   │   │   └── usecase/           # Use cases
-│   │   ├── presentation/          # Presentation layer
-│   │   │   ├── screen/           # Composable screens
-│   │   │   ├── component/        # Reusable components
-│   │   │   ├── viewmodel/        # ViewModels
-│   │   │   └── theme/            # UI theming
-│   │   └── di/                   # Dependency injection
-│   └── res/                      # Resources
-├── build.gradle.kts             # Module build config
-└── proguard-rules.pro          # Proguard rules
+``` mermaid
+graph TD
+    subgraph "App Module (Clean Architecture)"
+        A[com.example.melon_monitoring] --> B(UI Layer)
+        A --> C(Domain Layer)
+        A --> D(Data Layer)
+    end
 
-docs/                           # Dokumentasi
-├── screenshots/               # App screenshots
-├── diagrams/                  # Architecture diagrams
-└── api/                       # API documentation
+    subgraph "UI Layer (Presentation)"
+        B --> B1[Screen]
+        B --> B2[ViewModel]
+        B --> B3[Components]
+        
+        B1 --> B1a[Auth]
+        B1 --> B1b[Dashboard]
+        B1 --> B1c[Control]
+        B1 --> B1d[Profile]
+    end
 
-supabase/                      # Backend configuration
-├── migrations/               # Database migrations
-├── functions/               # Edge functions
-└── seeds/                   # Seed data
+    subgraph "Domain Layer (Business Logic)"
+        C --> C1[Model]
+        C --> C2[UseCase]
+        
+        C1 --> C1a[AppModels]
+        C2 --> C2a[DataUseCase]
+    end
+
+    subgraph "Data Layer (Network & Repo)"
+        D --> D1[Repository]
+        D --> D2[Network]
+        
+        D1 --> D1a[HydroponicRepo]
+        D2 --> D2a[SupabaseManager]
+    end
 ```
 
 ## 📚 **Dokumentasi Terkait**
