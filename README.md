@@ -185,6 +185,47 @@ supabase/                      # Backend configuration
 └── seeds/                   # Seed data
 ```
 
+```graph TD
+    subgraph "App Module (Clean Architecture)"
+        A[com.example.melon_monitoring] --> B(UI Layer)
+        A --> C(Domain Layer)
+        A --> D(Data Layer)
+    end
+
+    subgraph "UI Layer (Presentation)"
+        B --> B1[Screen]
+        B --> B2[ViewModel]
+        B --> B3[Components]
+        
+        B1 --> B1a[Auth]
+        B1 --> B1b[Dashboard]
+        B1 --> B1c[Control]
+        B1 --> B1d[Profile]
+    end
+
+    subgraph "Domain Layer (Business Logic)"
+        C --> C1[Model]
+        C --> C2[UseCase]
+        
+        C1 --> C1a[AppModels]
+        C2 --> C2a[DataUseCase]
+    end
+
+    subgraph "Data Layer (Network & Repo)"
+        D --> D1[Repository]
+        D --> D2[Network]
+        
+        D1 --> D1a[HydroponicRepo]
+        D2 --> D2a[SupabaseManager]
+    end
+
+    %% Styles
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#cceeff,stroke:#333
+    style C fill:#ffffcc,stroke:#333
+    style D fill:#e6ffcc,stroke:#333
+```
+
 ## 📚 **Dokumentasi Terkait**
 
 |          Dokumen           |                        Deskripsi                        |        Target Pembaca        |
