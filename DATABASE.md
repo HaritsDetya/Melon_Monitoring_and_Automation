@@ -125,15 +125,23 @@ D --> I[TDS]
    
    ```sql
    CREATE TABLE public.sensor_readings (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     greenhouse_id UUID REFERENCES greenhouses(id) ON DELETE CASCADE,
-     temperature DOUBLE PRECISION NULL,      -- °C
-     humidity DOUBLE PRECISION NULL,         -- %
-     water_temp DOUBLE PRECISION NULL,       -- °C  
-     ph DOUBLE PRECISION NULL,               -- 0-14 scale
-     tds DOUBLE PRECISION NULL,              -- ppm
-     recorded_at TIMESTAMPTZ DEFAULT NOW()
+   id uuid NOT NULL DEFAULT gen_random_uuid(),
+   greenhouse_id uuid NULL,
+   temperature double precision NULL,
+   humidity double precision NULL,
+   water_temp double precision NULL,
+   ph double precision NULL,
+   tds double precision NULL,
+   recorded_at timestamp with time zone NULL DEFAULT now(),
+   device_id character varying(255) NULL,
+   CONSTRAINT sensor_readings_pkey1 PRIMARY KEY (id),
+   CONSTRAINT fk_sensor_device FOREIGN KEY (device_id) REFERENCES iot_devices (device_id) ON DELETE SET NULL,
+   CONSTRAINT sensor_readings_greenhouse_id_fkey FOREIGN KEY (greenhouse_id) REFERENCES greenhouses (id) ON DELETE CASCADE
    );
+   
+   -- Indexes
+   CREATE INDEX IF NOT EXISTS idx_sensor_readings_device_id ON public.sensor_readings USING btree (device_id);
+   CREATE INDEX IF NOT EXISTS idx_greenhouse_id_readings ON public.sensor_readings USING btree (greenhouse_id);
    ```
    
    **Sensor Specifications**:
@@ -385,13 +393,13 @@ D --> I[TDS]
 
 ## ⚙️ **Database Functions**
 
-1. `create_greenhouse_default_data()`
+### 1. `create_greenhouse_default_data()`
 
-   **Type**: Trigger Function
-   **Called By**: after_greenhouse_created trigger
-   
-   ```sql
-   CREATE OR REPLACE FUNCTION create_greenhouse_default_data()
+**Type:** Trigger Function  
+**Called By:** `after_greenhouse_created` trigger
+    
+```sql
+CREATE OR REPLACE FUNCTION create_greenhouse_default_data()
    RETURNS TRIGGER AS $$
    BEGIN
        -- 1. Create default automation settings
@@ -412,45 +420,62 @@ D --> I[TDS]
        RETURN NEW;
    END;
    $$ LANGUAGE plpgsql SECURITY DEFINER;
-   ```
+```
+
+### 2. `copy_to_history_native()`
+
+**Type**: Trigger Function
+**Called By**: `on_sensor_reading_inserted_native` trigger
    
-   **Usage**:
-   
-   ```sql
-   -- Create trigger
-   CREATE TRIGGER after_greenhouse_created
-   AFTER INSERT ON greenhouses
-   FOR EACH ROW
-   EXECUTE FUNCTION create_greenhouse_default_data();
-   ```
+```sql
+CREATE OR REPLACE FUNCTION copy_to_history_native()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Cek dulu: Pastikan greenhouse_id TIDAK NULL agar tidak error constraint
+  IF NEW.greenhouse_id IS NULL THEN
+     -- Opsional: Anda bisa raise warning atau biarkan saja (data history tidak tercatat)
+     RETURN NEW; 
+  END IF;
 
-2. `trigger_copy_to_history()`
+  -- 1. Insert Temperature
+  IF NEW.temperature IS NOT NULL THEN
+    INSERT INTO sensor_history (greenhouse_id, sensor_type, value, recorded_at)
+    VALUES (NEW.greenhouse_id, 'TEMPERATURE', NEW.temperature, NEW.recorded_at);
+  END IF;
 
-   **Type**: Trigger Function
-   **Purpose**: Panggil Edge Function untuk archive data
-   
-   ```sql
-   CREATE OR REPLACE FUNCTION trigger_copy_to_history()
-   RETURNS TRIGGER AS $$
-   BEGIN
-       -- Call Edge Function via HTTP
-       PERFORM net.http_post(
-           url := 'https://your-project.supabase.co/functions/v1/copy-to-history',
-           headers := jsonb_build_object(
-               'Content-Type', 'application/json',
-               'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
-           ),
-           body := jsonb_build_object('record', NEW)::text
-       );
-       RETURN NEW;
-   END;
-   $$ LANGUAGE plpgsql SECURITY DEFINER;
-   ```
+  -- 2. Insert Humidity
+  IF NEW.humidity IS NOT NULL THEN
+    INSERT INTO sensor_history (greenhouse_id, sensor_type, value, recorded_at)
+    VALUES (NEW.greenhouse_id, 'HUMIDITY', NEW.humidity, NEW.recorded_at);
+  END IF;
 
-3. `delete_user_completely(user_id UUID)`
+  -- 3. Insert Water Temp
+  IF NEW.water_temp IS NOT NULL THEN
+    INSERT INTO sensor_history (greenhouse_id, sensor_type, value, recorded_at)
+    VALUES (NEW.greenhouse_id, 'WATER_TEMPERATURE', NEW.water_temp, NEW.recorded_at);
+  END IF;
 
-   **Type**: Stored Procedure
-   **Purpose**: Delete cascade semua data user
+  -- 4. Insert pH
+  IF NEW.ph IS NOT NULL THEN
+    INSERT INTO sensor_history (greenhouse_id, sensor_type, value, recorded_at)
+    VALUES (NEW.greenhouse_id, 'PH', NEW.ph, NEW.recorded_at);
+  END IF;
+
+  -- 5. Insert TDS
+  IF NEW.tds IS NOT NULL THEN
+    INSERT INTO sensor_history (greenhouse_id, sensor_type, value, recorded_at)
+    VALUES (NEW.greenhouse_id, 'TDS', NEW.tds, NEW.recorded_at);
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### 3. `delete_user_completely(user_id UUID)`
+
+**Type**: Stored Procedure
+**Purpose**: Delete cascade semua data user
    
    ```sql
    CREATE OR REPLACE FUNCTION delete_user_completely(user_id UUID)
@@ -499,147 +524,6 @@ D --> I[TDS]
    {
        "user_id": "uuid-here"
    }
-   ```
-
-4. `is_greenhouse_member(gh_id UUID)`
-
-   **Type**: Helper Function
-   **Purpose**: Validasi user membership
-   
-   ```sql
-   CREATE OR REPLACE FUNCTION is_greenhouse_member(gh_id UUID)
-   RETURNS BOOLEAN AS $$
-   BEGIN
-       RETURN EXISTS (
-           SELECT 1 FROM greenhouse_members 
-           WHERE greenhouse_id = gh_id 
-           AND user_id = auth.uid()
-       );
-   END;
-   $$ LANGUAGE plpgsql SECURITY DEFINER;
-   ```
-
-5. `create_access_code(p_greenhouse_id UUID, p_duration INTERVAL)`
-
-   **Type**: Utility Function
-   **Purpose**: Generate kode akses untuk join greenhouse
-   
-   ```sql
-   CREATE OR REPLACE FUNCTION create_access_code(
-       p_greenhouse_id UUID, 
-       p_duration INTERVAL DEFAULT '24 hours'
-   )
-   RETURNS TEXT AS $$
-   DECLARE
-       new_code TEXT;
-       expires_at TIMESTAMPTZ;
-   BEGIN
-       -- Authorization check
-       IF NOT is_greenhouse_member(p_greenhouse_id) THEN
-           RAISE EXCEPTION 'Access denied: Not a greenhouse member';
-       END IF;
-   
-       expires_at := NOW() + p_duration;
-   
-       -- Generate unique 6-char alphanumeric code
-       LOOP
-           SELECT array_to_string(
-               ARRAY(
-                   SELECT chr((48 + round(random() * 9))::integer)
-                   FROM generate_series(1, 3)
-               ) || 
-               ARRAY(
-                   SELECT chr((65 + round(random() * 25))::integer)
-                   FROM generate_series(1, 3)
-               ), ''
-           ) INTO new_code;
-           
-           EXIT WHEN NOT EXISTS (
-               SELECT 1 FROM access_codes 
-               WHERE code = new_code 
-               AND expires_at > NOW()
-           );
-       END LOOP;
-   
-       -- Insert new code
-       INSERT INTO access_codes (code, greenhouse_id, creator_id, expires_at)
-       VALUES (new_code, p_greenhouse_id, auth.uid(), expires_at);
-   
-       RETURN new_code;
-   END;
-   $$ LANGUAGE plpgsql SECURITY DEFINER;
-   ```
-
-6. `verify_and_join_greenhouse(p_access_code TEXT)`
-
-   **Type**: Action Function
-   **Purpose**: Validasi kode dan tambah user ke greenhouse
-   
-   ```sql
-   CREATE OR REPLACE FUNCTION verify_and_join_greenhouse(p_access_code TEXT)
-   RETURNS JSONB AS $$
-   DECLARE
-       v_code_record access_codes%ROWTYPE;
-       v_greenhouse_name TEXT;
-       v_user_id UUID := auth.uid();
-   BEGIN
-       -- Authentication check
-       IF v_user_id IS NULL THEN
-           RETURN jsonb_build_object(
-               'status', 'error',
-               'message', 'User not authenticated'
-           );
-       END IF;
-   
-       -- Find valid code
-       SELECT * INTO v_code_record
-       FROM access_codes
-       WHERE code = p_access_code
-       AND expires_at > NOW()
-       AND NOT is_used;
-   
-       IF NOT FOUND THEN
-           RETURN jsonb_build_object(
-               'status', 'error',
-               'message', 'Invalid or expired access code'
-           );
-       END IF;
-   
-       -- Check if already member
-       IF EXISTS (
-           SELECT 1 FROM greenhouse_members 
-           WHERE greenhouse_id = v_code_record.greenhouse_id 
-           AND user_id = v_user_id
-       ) THEN
-           UPDATE access_codes SET is_used = TRUE 
-           WHERE code = p_access_code;
-           
-           RETURN jsonb_build_object(
-               'status', 'info',
-               'message', 'Already a member of this greenhouse'
-           );
-       END IF;
-   
-       -- Add as member
-       INSERT INTO greenhouse_members (greenhouse_id, user_id, role)
-       VALUES (v_code_record.greenhouse_id, v_user_id, 'member');
-   
-       -- Mark code as used
-       UPDATE access_codes SET is_used = TRUE WHERE code = p_access_code;
-   
-       -- Get greenhouse name for response
-       SELECT name INTO v_greenhouse_name 
-       FROM greenhouses 
-       WHERE id = v_code_record.greenhouse_id;
-   
-       RETURN jsonb_build_object(
-           'status', 'success',
-           'message', 'Successfully joined greenhouse',
-           'greenhouse_name', v_greenhouse_name,
-           'greenhouse_id', v_code_record.greenhouse_id
-       );
-   END;
-   $$ LANGUAGE plpgsql SECURITY DEFINER;
    ```
 
 ## 🔐 **Row Level Security Policies**
@@ -1157,21 +1041,12 @@ SELECT COUNT(*) FROM sensor_readings;
 * [MQTT Protocol]()
 * [ESP32 Programming]()
 
-## 🔗 **Related Documentation**
-
-|    Document    |            	Purpose             |        	Link         |
-|:--------------:|:-------------------------------:|:--------------------:|
-|   README.md    |     	Main app documentation     |      	[README.md]()      |
-| API Reference  |    	API endpoints & examples    |     	[docs/API.md]()     |
-| Mobile Guide	  | Android app development guide	  | [docs/MOBILE_GUIDE.md]() |
-|   IoT Setup    |      	Hardware setup guide      |  	[docs/IOT_SETUP.md]()  |
-
 ## 📞 **Support**
 
 For database-related issues:
 1. Check the [Supabase Status Page]()
 2. Review [PostgreSQL Logs]()
-3. Contact: database-admin@example.com
 
+___
 **Database Version**: 1.0.0
 **Last Updated**: December 2025

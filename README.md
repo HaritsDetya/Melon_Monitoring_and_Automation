@@ -1,4 +1,4 @@
-# 🌱 Greenhouse Monitoring App
+# 🌱 **Greenhouse Monitoring App**
 
 ![Language](https://img.shields.io/badge/Language-Kotlin-purple) 
 ![UI](https://img.shields.io/badge/UI-Jetpack_Compose-green) 
@@ -136,6 +136,7 @@ cd Melon_Monitoring_and_Automation
     # Optional: Untuk Edge Functions
     ADMIN_DELETE_SECRET=your-secret-for-delete-function
     ```
+
 ### Langkah 3: Setup Database
 Jalankan script SQL berikut di Supabase SQL Editor:
 ```sql
@@ -187,13 +188,13 @@ supabase/                      # Backend configuration
 
 ## 📚 **Dokumentasi Terkait**
 
-|          Dokumen           |                        Deskripsi                        |        Target Pembaca        |
-|:--------------------------:|:-------------------------------------------------------:|:----------------------------:|
-| [DATABASE.md](DATABASE.md) | 	Dokumentasi teknis database Supabase lengkap           | Backend Dev, Database Admin  |
-|      API_REFERENCE.md      |           API endpoints dan payload examples            |  Mobile Dev, IoT Developer   |
-|      ARCHITECTURE.md       |               	Diagram arsitektur detail             |     Tech Lead, Architect     |
-|       DEPLOYMENT.md        |            Panduan deployment ke Play Store             |   DevOps, Release Manager    |
-|         TESTING.md         |                 	Panduan testing dan QA                 |     QA Engineer, Tester      |
+|                  Dokumen                   |                        Deskripsi                         |        Target Pembaca         |
+|:------------------------------------------:|:--------------------------------------------------------:|:-----------------------------:|
+|         [DATABASE.md](DATABASE.md)         |      	Dokumentasi teknis database Supabase lengkap       |  Backend Dev, Database Admin  |
+| [API_REFERENCE.md](docs/API_REFERENCE.md)  |            API endpoints dan payload examples            |   Mobile Dev, IoT Developer   |
+|  [ARCHITECTURE.md ](docs/ARCHITECTURE.md)  |                	Diagram arsitektur detail                |     Tech Lead, Architect      |
+|    [DEPLOYMENT.md](docs/DEPLOYMENT.md)     |             Panduan deployment ke Play Store             |    DevOps, Release Manager    |
+|       [TESTING.md](docs/TESTING.md)        |                 	Panduan testing dan QA                  |      QA Engineer, Tester      |
 
 ## 🤝 **Kontribusi**
 Cara Berkontribusi
@@ -253,4 +254,3 @@ SOFTWARE.
 - 📱 **Version**: 1.0.0 (Beta)
 - 🏗️ **Architecture**: MVVM + Clean Architecture
 - 🔄 **Last Updated**: December 2025
-- 👥 **Contributors**: 1
