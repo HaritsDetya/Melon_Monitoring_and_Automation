@@ -152,39 +152,6 @@ Jalankan script SQL berikut di Supabase SQL Editor:
 4. Klik Run 'app' (Shift + F10)
 
 ## 📁 **Project Structure**
-```text
-app/
-├── src/main/
-│   ├── java/com/yourpackage/
-│   │   ├── data/                   # Data layer
-│   │   │   ├── local/             # Room database
-│   │   │   ├── remote/            # Supabase API
-│   │   │   └── repository/        # Repository implementations
-│   │   ├── domain/                # Domain layer
-│   │   │   ├── model/             # Business models
-│   │   │   ├── repository/        # Repository interfaces
-│   │   │   └── usecase/           # Use cases
-│   │   ├── presentation/          # Presentation layer
-│   │   │   ├── screen/           # Composable screens
-│   │   │   ├── component/        # Reusable components
-│   │   │   ├── viewmodel/        # ViewModels
-│   │   │   └── theme/            # UI theming
-│   │   └── di/                   # Dependency injection
-│   └── res/                      # Resources
-├── build.gradle.kts             # Module build config
-└── proguard-rules.pro          # Proguard rules
-
-docs/                           # Dokumentasi
-├── screenshots/               # App screenshots
-├── diagrams/                  # Architecture diagrams
-└── api/                       # API documentation
-
-supabase/                      # Backend configuration
-├── migrations/               # Database migrations
-├── functions/               # Edge functions
-└── seeds/                   # Seed data
-```
-
 ```graph TD
     subgraph "App Module (Clean Architecture)"
         A[com.example.melon_monitoring] --> B(UI Layer)
