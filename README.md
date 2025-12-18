@@ -186,12 +186,6 @@ graph TD
         D1 --> D1a[HydroponicRepo]
         D2 --> D2a[SupabaseManager]
     end
-
-    %% Styles
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#cceeff,stroke:#333
-    style C fill:#ffffcc,stroke:#333
-    style D fill:#e6ffcc,stroke:#333
 ```
 
 ## 📚 **Dokumentasi Terkait**
