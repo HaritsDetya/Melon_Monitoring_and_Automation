@@ -152,7 +152,8 @@ Jalankan script SQL berikut di Supabase SQL Editor:
 4. Klik Run 'app' (Shift + F10)
 
 ## 📁 **Project Structure**
-```graph TD
+``` mermaid
+graph TD
     subgraph "App Module (Clean Architecture)"
         A[com.example.melon_monitoring] --> B(UI Layer)
         A --> C(Domain Layer)
