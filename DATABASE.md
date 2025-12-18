@@ -308,80 +308,86 @@ D --> I[TDS]
 
 ## 🔗 **Relationships (ERD)**
    
-   ```mermaid
-    erDiagram
-       users ||--o{ greenhouses : owns
-       users ||--o{ greenhouse_members : "member of"
-       
-       greenhouses ||--o{ sensor_readings : "has current"
-       greenhouses ||--o{ sensor_history : "has history"
-       greenhouses ||--|| iot_devices : "contains"
-       greenhouses ||--|| control_devices : "controls"
-       greenhouses ||--|| automation_settings : "configures"
-       
-       sensor_readings ||--o{ sensor_history : "archived to"
-       
-       users {
-           uuid id PK
-           string username
-           string email UK
-           timestamp created_at
-       }
-       
-       greenhouses {
-           uuid id PK
-           string name
-           uuid owner_id FK
-           timestamp created_at
-       }
-       
-       sensor_readings {
-           uuid id PK
-           uuid greenhouse_id FK
-           float temperature
-           float humidity
-           float water_temp
-           float ph
-           float tds
-           timestamp recorded_at
-       }
-       
-       sensor_history {
-           uuid id PK
-           uuid greenhouse_id FK
-           string sensor_type
-           float value
-           timestamp recorded_at
-       }
-       
-       iot_devices {
-           uuid id PK
-           string device_id UK
-           string serial_number UK
-           uuid greenhouse_id FK
-           string pairing_code
-           boolean is_paired
-           timestamp paired_at
-       }
-       
-       control_devices {
-           uuid id PK
-           uuid greenhouse_id FK
-           boolean fan
-           boolean pump
-           boolean auto_mode
-           timestamp updated_at
-       }
-       
-       automation_settings {
-           uuid id PK
-           uuid greenhouse_id FK
-           float max_temperature
-           float min_temperature
-           integer nutrient_droplets
-           timestamp updated_at
-       }
-   ```
+   ``` mermaid
+erDiagram
+    users {
+        uuid id PK
+        text email "Unique"
+        text username
+        text phone_number
+        timestamp created_at
+    }
+
+    greenhouses {
+        uuid id PK
+        uuid owner_id FK
+        text name
+        text location
+        text description
+    }
+
+    iot_devices {
+        uuid id PK
+        uuid greenhouse_id FK
+        varchar device_id "Unique Hardware ID"
+        varchar serial_number
+        varchar pairing_code
+        boolean is_paired
+        varchar encryption_key
+    }
+
+    sensor_readings {
+        uuid id PK
+        uuid greenhouse_id FK
+        varchar device_id FK
+        float temperature
+        float humidity
+        float water_temp
+        float ph
+        float tds
+        timestamp recorded_at
+    }
+
+    sensor_history {
+        uuid id PK
+        uuid greenhouse_id FK
+        text sensor_type "ENUM: TEMP, PH, etc"
+        float value
+        timestamp recorded_at
+    }
+
+    control_devices {
+        uuid id PK
+        uuid greenhouse_id FK
+        boolean fan "Status Blower"
+        boolean pump "Status Pompa"
+        boolean auto_mode
+    }
+
+    automation_settings {
+        uuid id PK
+        uuid greenhouse_id FK "Unique (1:1)"
+        float max_temperature
+        float min_temperature
+        int nutrient_droplets
+    }
+
+    %% RELASI ANTAR TABEL %%
+
+    users ||--o{ greenhouses : "owns (1:N)"
+    
+    greenhouses ||--o{ iot_devices : "contains (1:N)"
+    
+    greenhouses ||--o{ sensor_readings : "monitors (Realtime)"
+    
+    iot_devices ||--o{ sensor_readings : "sends data"
+    
+    greenhouses ||--o{ sensor_history : "logs (Archive)"
+    
+    greenhouses ||--|| control_devices : "controls (Device State)"
+    
+    greenhouses ||--|| automation_settings : "configures (Thresholds)"
+```
    
    **Cardinality Rules**:
    
