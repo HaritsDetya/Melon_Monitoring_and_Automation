@@ -36,7 +36,8 @@ Extensions: pg_net, pg_cron, pg_stat_statements
 
 ### Data Flow Architecture
 
-```flowchart TD
+```mermaid
+flowchart TD
 A[IoT Device] -->|HTTP POST| B[sensor_readings]
 B -->|Trigger| C[Edge Function]
 C --> D{sensor_history}
