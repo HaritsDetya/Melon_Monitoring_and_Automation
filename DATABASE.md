@@ -308,7 +308,8 @@ D --> I[TDS]
 
 ## 🔗 **Relationships (ERD)**
    
-   ```erDiagram
+   ```mermaid
+    erDiagram
        users ||--o{ greenhouses : owns
        users ||--o{ greenhouse_members : "member of"
        
