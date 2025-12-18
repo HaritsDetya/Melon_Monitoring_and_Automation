@@ -190,48 +190,83 @@ graph TD
 
 ``` mermaid
 erDiagram
-    USERS ||--o{ GREENHOUSES : "owns (1:N)"
-    GREENHOUSES ||--o{ IOT_DEVICES : "contains (1:N)"
-    GREENHOUSES ||--o{ SENSOR_READINGS : "has (1:N)"
-    GREENHOUSES ||--o{ SENSOR_HISTORY : "logs (1:N)"
-    GREENHOUSES ||--|| CONTROL_DEVICES : "has (1:1)"
-    GREENHOUSES ||--|| AUTOMATION_SETTINGS : "configures (1:1)"
-    IOT_DEVICES ||--o{ SENSOR_READINGS : "sends"
-
-    USERS {
+    users {
         uuid id PK
-        string email
-        string username
+        text email "Unique"
+        text username
+        text phone_number
+        timestamp created_at
     }
 
-    GREENHOUSES {
+    greenhouses {
         uuid id PK
-        string name
-        string location
         uuid owner_id FK
+        text name
+        text location
+        text description
     }
 
-    IOT_DEVICES {
+    iot_devices {
         uuid id PK
-        string device_id
-        string serial_number
+        uuid greenhouse_id FK
+        varchar device_id "Unique Hardware ID"
+        varchar serial_number
+        varchar pairing_code
         boolean is_paired
+        varchar encryption_key
     }
 
-    SENSOR_READINGS {
+    sensor_readings {
         uuid id PK
+        uuid greenhouse_id FK
+        varchar device_id FK
         float temperature
         float humidity
+        float water_temp
         float ph
         float tds
+        timestamp recorded_at
     }
 
-    CONTROL_DEVICES {
+    sensor_history {
         uuid id PK
-        boolean fan
-        boolean pump
+        uuid greenhouse_id FK
+        text sensor_type "ENUM: TEMP, PH, etc"
+        float value
+        timestamp recorded_at
+    }
+
+    control_devices {
+        uuid id PK
+        uuid greenhouse_id FK
+        boolean fan "Status Blower"
+        boolean pump "Status Pompa"
         boolean auto_mode
     }
+
+    automation_settings {
+        uuid id PK
+        uuid greenhouse_id FK "Unique (1:1)"
+        float max_temperature
+        float min_temperature
+        int nutrient_droplets
+    }
+
+    %% RELASI ANTAR TABEL %%
+
+    users ||--o{ greenhouses : "owns (1:N)"
+    
+    greenhouses ||--o{ iot_devices : "contains (1:N)"
+    
+    greenhouses ||--o{ sensor_readings : "monitors (Realtime)"
+    
+    iot_devices ||--o{ sensor_readings : "sends data"
+    
+    greenhouses ||--o{ sensor_history : "logs (Archive)"
+    
+    greenhouses ||--|| control_devices : "controls (Device State)"
+    
+    greenhouses ||--|| automation_settings : "configures (Thresholds)"
 ```
 
 ## 📚 **Dokumentasi Terkait**
