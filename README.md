@@ -188,6 +188,52 @@ graph TD
     end
 ```
 
+``` mermaid
+erDiagram
+    USERS ||--o{ GREENHOUSES : "owns (1:N)"
+    GREENHOUSES ||--o{ IOT_DEVICES : "contains (1:N)"
+    GREENHOUSES ||--o{ SENSOR_READINGS : "has (1:N)"
+    GREENHOUSES ||--o{ SENSOR_HISTORY : "logs (1:N)"
+    GREENHOUSES ||--|| CONTROL_DEVICES : "has (1:1)"
+    GREENHOUSES ||--|| AUTOMATION_SETTINGS : "configures (1:1)"
+    IOT_DEVICES ||--o{ SENSOR_READINGS : "sends"
+
+    USERS {
+        uuid id PK
+        string email
+        string username
+    }
+
+    GREENHOUSES {
+        uuid id PK
+        string name
+        string location
+        uuid owner_id FK
+    }
+
+    IOT_DEVICES {
+        uuid id PK
+        string device_id
+        string serial_number
+        boolean is_paired
+    }
+
+    SENSOR_READINGS {
+        uuid id PK
+        float temperature
+        float humidity
+        float ph
+        float tds
+    }
+
+    CONTROL_DEVICES {
+        uuid id PK
+        boolean fan
+        boolean pump
+        boolean auto_mode
+    }
+```
+
 ## 📚 **Dokumentasi Terkait**
 
 |          Dokumen           |                        Deskripsi                        |        Target Pembaca        |
