@@ -1,57 +1,38 @@
 # 🗄️ **Supabase Database Documentation**
 
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-blue)
-![RLS](https://img.shields.io/badge/Row%20Level%20Security-Enabled-green)
-![Triggers](https://img.shields.io/badge/Triggers-2%20active-orange)
-![Functions](https://img.shields.io/badge/Functions-6%20defined-yellow)
-![Edge Functions](https://img.shields.io/badge/Edge%20Functions-2%20deployed-purple)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.0-blue?style=flat&logo=postgresql)
+![RLS](https://img.shields.io/badge/RLS-Enabled-green?style=flat&logo=supabase)
+![Realtime](https://img.shields.io/badge/Realtime-Active-orange?style=flat&logo=supabase)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 
-> **Dokumentasi teknis lengkap untuk database Supabase - Greenhouse Monitoring System**
+> **Dokumentasi teknis mendalam mengenai struktur database, relasi, fungsi, dan kebijakan keamanan (Row Level Security) untuk Greenhouse Monitoring System.**
 
-## 📋 **Quick Navigation**
+---
 
-- [🔙 Kembali ke README](README.md)
-- [🏗️ Schema Overview](#-schema-overview)
-- [📊 Tabel Structure](#-tabel-structure)
-- [🔗 Relationships](#-relationships-erd)
-- [⚙️ Functions](#-database-functions)
-- [🔐 RLS Policies](#-row-level-security-policies)
-- [🎯 Triggers](#-database-triggers)
-- [🌐 Edge Functions](#-edge-functions)
-- [🚀 Setup Guide](#-setup-guide)
+## 📋 Daftar Isi
+- [Schema Overview](#-schema-overview)
+- [Struktur Tabel](#-struktur-tabel)
+- [Entity Relationship Diagram (ERD)](#-entity-relationship-diagram-erd)
+- [Stored Functions & Triggers](#-stored-functions--triggers)
+- [Row Level Security (RLS)](#-row-level-security-rls-policies)
+- [Edge Functions Integration](#-edge-functions-integration)
+- [Optimasi Performa](#-optimasi-performa)
 
-## 🎯 **Database Overview**
+---
 
-### Spesifikasi Teknis
-```yaml
-Database: PostgreSQL 15+
-Total Tables: 7
-Total Rows: ~10,000 (estimated)
-Storage: ~500MB (initial)
-Backup: Daily automatic
-Region: Singapore (nearest to Indonesia)
-Performance: 2GB RAM, 1 vCPU (Supabase Free Tier)
-Extensions: pg_net, pg_cron, pg_stat_statements
-```
+## 🏗 Schema Overview
 
-### Data Flow Architecture
+Database ini di-hosting menggunakan **Supabase** (PostgreSQL). Desain skema berfokus pada:
+1.  **Multi-tenancy:** Data dipisahkan secara logis berdasarkan `owner_id` (User UUID).
+2.  **IoT Security:** Tabel perangkat terpisah (`iot_devices`) untuk validasi hardware sebelum data diterima.
+3.  **Hot vs Cold Data:** Pemisahan data sensor *real-time* (`sensor_readings`) dan data historis (`sensor_history`) untuk performa query yang optimal.
 
-```mermaid
-flowchart TD
-A[IoT Device] -->|HTTP POST| B[sensor_readings]
-B -->|Trigger| C[Edge Function]
-C --> D{sensor_history}
-D --> E[TEMPERATURE]
-D --> F[HUMIDITY]
-D --> G[WATER_TEMP]
-D --> H[PH]
-D --> I[TDS]
+### Ringkasan Statistik
+* **Primary Key:** UUID (v4) digunakan di semua tabel.
+* **Timezone:** Semua timestamp menggunakan `TIMESTAMPTZ` (UTC).
+* **Extensions:** `pg_net` (untuk Edge Functions), `moddatetime` (tracking update).
 
-    J[Mobile App] -->|Query| K[All Tables]
-    J -->|Subscribe| L[Realtime Changes]
-    
-    M[Admin Panel] -->|Manage| N[users, greenhouses]
-```
+---
 
 ## 📊 **Tabel Structure**
 
@@ -792,26 +773,7 @@ FOR UPDATE USING (
    * Go to Database → Replication
    * Enable for: `sensor_readings`, `control_devices`, `sensor_history`
 
-### **Step 3: Deploy Edge Functions**
-
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login
-supabase login
-
-# Deploy functions
-supabase functions deploy copy-to-history
-supabase functions deploy delete-auth-account
-
-# Set secrets
-supabase secrets set ADMIN_DELETE_SECRET=your-secret-key
-supabase secrets set SUPABASE_URL=https://your-project.supabase.co
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-key
-```
-
-### **Step 4: Authentication Setup**
+### **Step 3: Authentication Setup**
 
 1. Go to Authentication → Settings
 2. Enable Email provider
@@ -1027,33 +989,6 @@ psql -h db-host -U postgres -d dbname < backup.sql
 SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM sensor_readings;
 ```
-
-## 📚 **References & Resources**
-
-### **Supabase Documentation**
-
-* [Supabase Docs]()
-* [PostgreSQL RLS Guide]()
-* [Edge Functions]()
-* [Realtime Subscriptions]()
-
-### **PostgreSQL Resources**
-
-* [PostgreSQL Official Docs]()
-* [Indexing Strategies]()
-* [Performance Tuning]()
-
-### **IoT Integration**
-
-* [REST API Design]()
-* [MQTT Protocol]()
-* [ESP32 Programming]()
-
-## 📞 **Support**
-
-For database-related issues:
-1. Check the [Supabase Status Page]()
-2. Review [PostgreSQL Logs]()
 
 ___
 **Database Version**: 1.0.0

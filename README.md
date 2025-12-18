@@ -1,120 +1,127 @@
-# 🌱 **Greenhouse Monitoring App**
+# 🌱 Greenhouse Monitoring App
 
-![Language](https://img.shields.io/badge/Language-Kotlin-purple) 
-![UI](https://img.shields.io/badge/UI-Jetpack_Compose-green) 
-![Backend](https://img.shields.io/badge/Backend-Supabase-emerald)
-![Platform](https://img.shields.io/badge/Platform-Android-blue)
-![Status](https://img.shields.io/badge/Status-Development-orange)
+![Language](https://img.shields.io/badge/Language-Kotlin-purple?style=flat&logo=kotlin)
+![UI](https://img.shields.io/badge/UI-Jetpack_Compose-green?style=flat&logo=android)
+![Backend](https://img.shields.io/badge/Backend-Supabase-emerald?style=flat&logo=supabase)
+![Platform](https://img.shields.io/badge/Platform-Android-blue?style=flat&logo=android)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Status](https://img.shields.io/badge/Status-Beta-orange)
 
-> **Aplikasi Android untuk monitoring dan kontrol greenhouse hidroponik secara real-time**
+> **Aplikasi Android berbasis IoT untuk monitoring dan kontrol sistem greenhouse hidroponik secara real-time.**
+
+---
+
+## 📑 Daftar Isi
+- [Screenshots](#-screenshots)
+- [Tentang Proyek](#-tentang-proyek)
+- [Fitur Utama](#-fitur-utama)
+- [Arsitektur Teknis](#-arsitektur-teknis)
+- [Persiapan & Instalasi](#-persiapan--instalasi-quick-start)
+- [Struktur Database](#-struktur-database)
+- [Dokumentasi](#-dokumentasi-terkait)
+- [Kontribusi](#-kontribusi)
+
+---
 
 ## 📱 Screenshots
 
-|             Login / Auth             |             Dashboard Monitoring             |             Kontrol Perangkat            |              Detail History              |
-|:------------------------------------:|:--------------------------------------------:|:----------------------------------------:|:----------------------------------------:|
-| ![Login](docs/screenshots/login.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![Control](docs/screenshots/control.png) | ![History](docs/screenshots/history.png) |
+| Login / Auth | Dashboard Monitoring | Kontrol Perangkat | Detail History |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/login.png" width="200" alt="Login"/> | <img src="docs/screenshots/dashboard.png" width="200" alt="Dashboard"/> | <img src="docs/screenshots/control.png" width="200" alt="Control"/> | <img src="docs/screenshots/history.png" width="200" alt="History"/> |
 
-## 📌 Deskripsi Proyek
+---
 
-Greenhouse Monitoring App dibangun untuk mempermudah petani hidroponik dalam memantau parameter vital tanaman dari jarak jauh. Aplikasi ini mengadopsi arsitektur modern (MVVM) dengan pendekatan UI deklaratif (Compose).
+## 📌 Tentang Proyek
 
-Sistem ini menjembatani komunikasi antara:
-1.  **Pengguna (Android App)**: Interface pemantauan dan kontrol.
-2.  **Server (Supabase)**: Pusat autentikasi, database, dan real-time engine.
-3.  **Hardware (IoT)**: Sensor fisik dan aktuator di lapangan.
+**Greenhouse Monitoring App** dibangun untuk mempermudah petani hidroponik dalam memantau parameter vital tanaman dari jarak jauh. Aplikasi ini mengadopsi arsitektur modern (**MVVM + Clean Architecture**) dengan pendekatan UI deklaratif menggunakan **Jetpack Compose**.
+
+Sistem ini menjembatani komunikasi antara tiga entitas utama:
+1.  **Android App**: Antarmuka pengguna untuk visualisasi data & kontrol.
+2.  **Supabase Cloud**: Backend-as-a-Service (BaaS) untuk Auth, Database, dan Realtime subscription.
+3.  **IoT Device**: Perangkat keras (ESP32) yang mengelola sensor dan aktuator fisik.
+
+---
 
 ## 🎯 Fitur Utama
 
-### 🔐 **Autentikasi & Keamanan**
-- ✅ Registrasi pengguna baru dengan email/password
-- ✅ Login dengan kredensial aman
-- ✅ Reset password via email
-- ✅ Update profil pengguna
-- ✅ Penghapusan akun beserta semua data terkait
+### 🔐 Autentikasi & Keamanan
+* ✅ **Secure Login:** Autentikasi aman menggunakan Supabase Auth.
+* ✅ **User Management:** Registrasi, Reset Password, dan Update Profil.
+* ✅ **Data Privacy:** Penerapan *Row Level Security* (RLS) memastikan pengguna hanya mengakses greenhouse miliknya.
 
-### 📊 **Monitoring Real-time**
-- 🌡️ **Suhu Udara**: Monitoring suhu lingkungan greenhouse
-- 💧 **Kelembapan**: Tingkat kelembapan udara
-- 🔋 **pH Air**: Tingkat keasaman air hidroponik
-- ⚡ **TDS**: Total Dissolved Solids (nutrisi air)
-- 🌊 **Suhu Air**: Suhu air dalam sistem hidroponik
-- 📈 **Grafik History**: Visualisasi data historis 24 jam/7 hari/30 hari
+### 📊 Monitoring Real-time
+* 🌡️ **Lingkungan:** Pantau Suhu & Kelembapan udara greenhouse.
+* 💧 **Kualitas Air:** Monitoring pH, TDS (PPM), dan Suhu Air nutrisi.
+* 📈 **History Data:** Visualisasi grafik tren kondisi tanaman (24 jam / 7 hari terakhir).
 
-### 🔧 **Kontrol Perangkat**
-- 🌀 **Kipas (Fan)**: Kontrol sirkulasi udara ON/OFF
-- 💦 **Pompa Air**: Kontrol irigasi air ON/OFF
-- 🤖 **Mode Otomatis**: Sistem berjalan otomatis berdasarkan setting
+### 🔧 Kontrol & Otomasi
+* 🌀 **Smart Control:** Kendalikan Kipas (Blower) dan Pompa Air dari jarak jauh.
+* 🤖 **Automation Mode:** Atur *threshold* (ambang batas) agar perangkat bekerja otomatis berdasarkan sensor.
 
-## 🏗️ **Arsitektur Teknis**
+---
 
-Aplikasi ini menggunakan pola **MVVM (Model-View-ViewModel)** dan **Clean Architecture** sederhana.
+## 🏗️ Arsitektur Teknis
+
+Aplikasi ini dibangun dengan prinsip **Separation of Concerns** menggunakan pola **MVVM**.
 
 ### Tech Stack
-```yaml
-Frontend:
-  Language: Kotlin
-  UI Framework: Jetpack Compose
-  Architecture: MVVM + Clean Architecture
-  DI: Dagger Hilt
-  Async: Coroutines + Flow
-  Navigation: Jetpack Navigation Compose
-  Database Local: Room Database
 
-Backend:
-  Platform: Supabase
-  Database: PostgreSQL
-  Auth: Supabase Auth
-  Realtime: Supabase Realtime
-  Storage: Supabase Storage
-  Functions: Edge Functions
+| Kategori | Teknologi |
+| :--- | :--- |
+| **Language** | Kotlin |
+| **UI Framework** | Jetpack Compose (Material 3) |
+| **Architecture** | MVVM + Clean Architecture |
+| **DI** | Dagger Hilt |
+| **Async** | Coroutines + Flow |
+| **Backend** | Supabase (PostgreSQL, Auth, Realtime) |
+| **IoT Protocol** | MQTT / REST via Supabase Edge Functions |
 
-IoT Integration:
-  Protocol: HTTP REST + MQTT
-  Microcontroller: ESP32/Arduino
-  Sensors: DHT22, pH Sensor, TDS Sensor
-  Actuators: Relay Module
-```
+### Diagram Arsitektur (High Level)
 
-### Diagram Arsitektur
-```graph TB
-    subgraph "Mobile Application"
-        UI[UI Layer - Compose]
-        VM[ViewModel Layer]
-        REPO[Repository Layer]
-        LOCAL[Local Database]
+```mermaid
+graph TB
+    subgraph "Mobile App (Android)"
+        UI[UI Layer / Compose]
+        VM[ViewModel]
+        REPO[Repository]
+        LOCAL[Room DB]
     end
     
-    subgraph "Supabase Backend"
-        AUTH[Authentication]
-        DB[(PostgreSQL Database)]
+    subgraph "Cloud Backend (Supabase)"
+        AUTH[Auth Service]
+        DB[(PostgreSQL)]
         RT[Realtime Engine]
         FUNC[Edge Functions]
-        STORAGE[File Storage]
     end
     
-    subgraph "IoT Ecosystem"
-        DEVICE[IoT Device]
-        SENSORS[Physical Sensors]
-        ACTUATORS[Relay Controls]
+    subgraph "Greenhouse (IoT)"
+        MCU[ESP32 Controller]
+        SENSORS[Sensors: DHT, pH, TDS]
+        RELAY[Relays: Fan, Pump]
     end
     
-    UI --> VM
-    VM --> REPO
-    REPO --> LOCAL
-    REPO -->|HTTP/REST| DB
-    REPO -->|WebSocket| RT
-    REPO -->|Auth| AUTH
-    DB -->|Triggers| FUNC
-    DEVICE -->|HTTP POST| DB
-    DB -->|Realtime| DEVICE
-    DEVICE --> SENSORS
-    DEVICE --> ACTUATORS
+    %% Flows
+    UI <--> VM
+    VM <--> REPO
+    REPO <--> LOCAL
+    
+    REPO -- REST/Socket --> DB
+    REPO -- Subscribe --> RT
+    REPO -- Token --> AUTH
+    
+    MCU -- Post Data --> DB
+    DB -- Trigger --> FUNC
+    RT -.->|Push Update| UI
+    
+    MCU --- SENSORS
+    MCU --- RELAY
 ```
 
-## 🚀 **Quick Start**
-### Prerequisites
-- Android Studio Hedgehog (2023.1.1) atau versi lebih baru
-- JDK 17 atau lebih baru
+## 🚀 **Persiapan & Instalasi (Quick Start)**
+
+### Prasyarat
+- Android Studio Merkeet (2023.1.1) ke atas
+- JDK 17
 - Akun Supabase (gratis)
 - Perangkat Android atau Emulator (API 24+)
 
@@ -131,7 +138,7 @@ cd Melon_Monitoring_and_Automation
     ```properties
     # Supabase Configuration
     SUPABASE_URL=https://your-project.supabase.co
-    SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    SUPABASE_ANON_KEY=eyJ.....
     
     # Optional: Untuk Edge Functions
     ADMIN_DELETE_SECRET=your-secret-for-delete-function
@@ -148,9 +155,9 @@ Jalankan script SQL berikut di Supabase SQL Editor:
 
 ### Langkah 4: Build & Run
 1. Buka project di Android Studio
-2. Tunggu Gradle sync selesai
-3. Pilih device/emulator
-4. Klik Run 'app' (Shift + F10)
+2. Lakukan **Sync Project with Gradle Files**
+3. Hubungkan device fisik atau jalankan Emulator
+4. Klik **Run** (Shift + F10)
 
 ## 📁 **Project Structure**
 ``` mermaid
@@ -196,8 +203,6 @@ graph TD
 |         [DATABASE.md](DATABASE.md)         |      	Dokumentasi teknis database Supabase lengkap       |  Backend Dev, Database Admin  |
 | [API_REFERENCE.md](docs/API_REFERENCE.md)  |            API endpoints dan payload examples            |   Mobile Dev, IoT Developer   |
 |  [ARCHITECTURE.md ](docs/ARCHITECTURE.md)  |                	Diagram arsitektur detail                |     Tech Lead, Architect      |
-|    [DEPLOYMENT.md](docs/DEPLOYMENT.md)     |             Panduan deployment ke Play Store             |    DevOps, Release Manager    |
-|       [TESTING.md](docs/TESTING.md)        |                 	Panduan testing dan QA                  |      QA Engineer, Tester      |
 
 ## 🤝 **Kontribusi**
 Cara Berkontribusi
@@ -233,24 +238,6 @@ Cara Berkontribusi
 MIT License
 
 Copyright (c) 2024 Harits
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONTRACT WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
 
 ## 📊 Project Stats:

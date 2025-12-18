@@ -1,65 +1,73 @@
 # 🏗️ Architecture Documentation
 
-![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean-blue)
-![Layers](https://img.shields.io/badge/Layers-4%20Tier-green)
-![Testing](https://img.shields.io/badge/Testing-85%25%20Coverage-brightgreen)
+![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean-blue?style=flat&logo=android)
+![Layers](https://img.shields.io/badge/Layers-4%20Tier-green?style=flat&logo=layers)
+![Testing](https://img.shields.io/badge/Testing-Unit%20%26%20UI-brightgreen?style=flat&logo=junit5)
 
 > **Dokumentasi arsitektur teknis lengkap untuk Greenhouse Monitoring App**
+
+---
 
 ## 📋 Daftar Isi
 - [Architecture Overview](#-architecture-overview)
 - [Clean Architecture Layers](#-clean-architecture-layers)
-- [Data Flow](#-data-flow)
-- [Component Diagram](#-component-diagram)
+- [Data Flow Diagrams](#-data-flow-diagrams)
 - [Dependency Injection](#-dependency-injection)
 - [State Management](#-state-management)
-- [Navigation](#-navigation)
+- [Navigation Strategy](#-navigation-strategy)
 - [Testing Strategy](#-testing-strategy)
-- [Performance Considerations](#-performance-considerations)
+- [Performance & Caching](#-performance--caching)
+
+---
 
 ## 🎯 Architecture Overview
 
-### High-Level Architecture
+Aplikasi ini dibangun menggunakan prinsip **Modern Android Development (MAD)** dengan pola **MVVM (Model-View-ViewModel)** yang dibungkus dalam **Clean Architecture**.
 
-| Presentation Layer  |  (UI Components, ViewModels, Navigation)  |
-|:-------------------:|:-----------------------------------------:|
-|    Domain Layer     |   (Use Cases, Business Rules, Entities)   |
-|     Data Layer      |   (Repositories, Data Sources, Mappers)   |
-|   Framework Layer   |       (Supabase, Room, System APIs)       |
+### High-Level Diagram
+Sistem ini terbagi menjadi 3 komponen besar yang saling berinteraksi:
 
-
-### Tech Stack Diagram
 ```mermaid
 graph TB
-    subgraph "Android Client"
-        A[Compose UI] --> B[ViewModel]
-        B --> C[UseCases]
-        C --> D[Repository]
-        D --> E[Local DataSource]
-        D --> F[Remote DataSource]
+    subgraph "Android Client (MVVM)"
+        UI[Compose UI] <--> VM[ViewModel]
+        VM <--> UC[Use Case]
+        UC <--> REPO[Repository]
+        REPO <--> REMOTE[Remote Source]
+        REPO <--> LOCAL[Local Source]
     end
     
-    subgraph "Supabase Backend"
-        G[PostgreSQL] --> H[Realtime]
-        G --> I[Auth]
-        G --> J[Storage]
-        K[Edge Functions]
+    subgraph "Supabase Cloud"
+        DB[(PostgreSQL)]
+        AUTH[Auth Service]
+        RT[Realtime Engine]
+        FUNC[Edge Functions]
     end
     
-    subgraph "IoT Layer"
-        L[ESP32 Microcontroller]
-        M[Sensors]
-        N[Relays]
+    subgraph "IoT Ecosystem"
+        MCU[ESP32 Controller]
+        SENSOR[Sensors]
+        RELAY[Relays]
     end
     
-    F --> G
-    L --> F
-    H --> A
+    %% Connections
+    REMOTE <-->|REST / Socket| DB
+    REMOTE <-->|HTTPS| AUTH
+    REMOTE <-->|WSS| RT
+    
+    MCU -->|HTTP POST| DB
+    DB -->|Trigger| FUNC
+    RT -.->|Push Update| UI
+    
+    MCU --- SENSOR
+    MCU --- RELAY
 ```
 
 ## 🏛️ **Clean Architecture Layers**
 
-### 1. **Presentation Layer**
+Kami membagi struktur kode menjadi 3 lapisan utama (Module):
+
+### 1. **Presentation Layer** (`ui/`)
 
 **Purpose**: Menangani UI dan user interaction
 
@@ -92,7 +100,7 @@ presentation/
     └── Theme.kt
 ```
 
-### 2. **Domain Layer**
+### 2. **Domain Layer** (`domain/`)
 
 **Purpose**: Business logic dan enterprise rules
 
@@ -112,7 +120,7 @@ class GetLatestSensorReadingsUseCase(
 }
 ```
 
-### 3. **Data Layer**
+### 3. **Data Layer** (`data/`)
 
 **Purpose**: Mengelola data dari berbagai sources
 
