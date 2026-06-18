@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.melon_monitoring_and_automation.SetSystemBars
@@ -108,7 +109,7 @@ fun GreenhouseDetailScreen(
                 title = { Text(greenhouse?.name ?: "Loading...") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -238,7 +239,7 @@ fun SensorReadingsSection(sensorReadings: com.example.melon_monitoring_and_autom
 
                 val timeStr = DateUtils.formatToLocalTime(
                     sensorReadings.recordedAt,
-                    "EEEE, dd MMMM HH:mm:ss" // Contoh: Senin, 08 Desember 10:45:00
+                    "EEEE, dd MMMM yyyy HH:mm:ss" // Contoh: Senin, 08 Desember 2026 10:45:00
                 )
 
                 Text(
@@ -311,13 +312,21 @@ fun EmptySensorDataPlaceholder() {
 fun ReadingItem(label: String, value: String, unit: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         Text(
             text = "$value $unit",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(start = 8.dp)
         )
     }
 }
@@ -418,7 +427,9 @@ private fun SafeChartImplementation(greenhouseId: String) {
     LaunchedEffect(chartConfig.selectedSensorType, chartConfig.timeRange, chartConfig.customDateRange) {
         try {
             viewModel.loadChartData(greenhouseId)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             chartError = "Gagal memuat data chart: ${e.message}"
         }
     }

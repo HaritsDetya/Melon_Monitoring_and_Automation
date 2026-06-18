@@ -27,7 +27,9 @@ object DateUtils {
             val formatter = DateTimeFormatter.ofPattern(pattern, Locale("id", "ID"))
 
             zonedDateTime.format(formatter)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             utcTimeString // Jika gagal parse, kembalikan string aslinya
         }
     }

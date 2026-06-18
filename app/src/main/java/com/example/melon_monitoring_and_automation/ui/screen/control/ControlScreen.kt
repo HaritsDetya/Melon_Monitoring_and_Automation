@@ -126,26 +126,7 @@ fun ControlScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = darkGreen,
                     titleContentColor = Color.White
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Kembali",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    // Device Management Button
-                    IconButton(onClick = onManageDevicesClick) {
-                        Icon(
-                            Icons.Default.DeviceHub,
-                            contentDescription = "Kelola Perangkat",
-                            tint = Color.White
-                        )
-                    }
-                }
+                )
             )
         }
     ) { padding ->

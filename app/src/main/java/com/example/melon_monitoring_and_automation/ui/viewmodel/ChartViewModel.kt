@@ -167,7 +167,9 @@ class ChartViewModel @Inject constructor(
 
                 println("🔹 [CHART] Available months loaded: ${months.size} months")
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [CHART] Error loading available months: ${e.message}")
                 _errorMessage.value = "Gagal memuat data bulan tersedia"
             }
@@ -217,7 +219,9 @@ class ChartViewModel @Inject constructor(
                 _weeklyRanges.value = weeklyRanges
                 println("🔹 [CHART] Generated ${weeklyRanges.size} weekly ranges")
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [CHART] Error generating weekly ranges: ${e.message}")
                 _errorMessage.value = "Gagal menghasilkan rentang mingguan"
             }
@@ -374,7 +378,9 @@ class ChartViewModel @Inject constructor(
                 // Transform data untuk chart rendering
                 val chartDataPoints = try {
                     transformToChartDataPoints(sensorHistory, config.timeRange, config.customDateRange)
-                } catch (e: Exception) {
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                     println("🔹 [CHART] Error transforming data: ${e.message}")
                     _errorMessage.value = "Gagal memproses data chart: ${e.message}"
                     emptyList()
@@ -383,7 +389,9 @@ class ChartViewModel @Inject constructor(
                 _chartData.value = chartDataPoints
                 println("🔹 [CHART] Chart data loaded: ${chartDataPoints.size} points")
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [CHART] Unexpected error in loadChartData: ${e.message}")
                 _errorMessage.value = "Terjadi kesalahan: ${e.message}"
                 _chartData.value = emptyList()
@@ -515,7 +523,9 @@ class ChartViewModel @Inject constructor(
                 TimeRange.DAYS_30 -> transformTo30DayDataPoints(sortedData)
                 TimeRange.CUSTOM -> transformToCustomDataPoints(sortedData, customDateRange)
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [CHART] Error in transformation: ${e.message}")
             e.printStackTrace()
             emptyList()
@@ -738,7 +748,9 @@ class ChartViewModel @Inject constructor(
                     formatForCustomRange(timestamp, customDateRange)
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             "??" // Fallback untuk error formatting
         }
     }
@@ -926,7 +938,9 @@ class ChartViewModel @Inject constructor(
                 }
                 else -> date // Untuk time range lain, return as-is
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             "??/??" // Fallback untuk error formatting
         }
     }

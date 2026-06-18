@@ -143,7 +143,9 @@ class HydroponicRepository(
                         filter { eq("id", userIdString) }
                     }
                     .decodeSingle<User>()
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error verifying user: ${e.message}")
                 throw Exception("Failed to verify user creation in database")
             }
@@ -161,7 +163,9 @@ class HydroponicRepository(
 
             Result.success(savedUser)
 
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [REPO] Registration failed: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
@@ -220,7 +224,9 @@ class HydroponicRepository(
                 println("🔹 [REPO] User profile found: ${userProfile.email}")
                 Result.success(userProfile)
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Login failed: ${e.message}")
                 e.printStackTrace()
                 Result.failure(e)
@@ -264,7 +270,9 @@ class HydroponicRepository(
                 try {
                     val responseBody = response.body<String>()
                     println("🔹 [REPO] Response body: $responseBody")
-                } catch (e: Exception) {
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                     println("🔹 [REPO] Cannot read response body: ${e.message}")
                 }
 
@@ -293,7 +301,9 @@ class HydroponicRepository(
                     }
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] ❌ EXCEPTION: ${e.message}")
                 e.printStackTrace()
                 NetworkResult.Error("Network error: ${e.message}")
@@ -317,12 +327,16 @@ class HydroponicRepository(
             try {
                 // Clear any cached data atau local storage
                 SupabaseManager.client.auth.clearSession()
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Additional cleanup error: ${e.message}")
             }
 
             println("🔹 [REPO] Local cache cleared successfully")
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [REPO] Error clearing cache: ${e.message}")
             throw e
         }
@@ -360,7 +374,9 @@ class HydroponicRepository(
             println("🔹 [REPO] User profile found: $userProfile")
             userProfile
 
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [REPO] Error getting current user: ${e.message}")
             e.printStackTrace()
             null
@@ -421,7 +437,9 @@ class HydroponicRepository(
                     println("🔹 [REPO] Settings not found, creating new...")
                     tryInsertSettings(settings)
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error in updateAutomationSettings: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to update automation settings")
             }
@@ -478,7 +496,9 @@ class HydroponicRepository(
                 } else {
                     NetworkResult.Success(null)
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error getting automation settings: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to get automation settings")
             }
@@ -514,7 +534,9 @@ class HydroponicRepository(
 
                 println("🔹 [REPO] Automation settings created successfully")
                 NetworkResult.Success(result)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error creating automation settings: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to create automation settings: ${e.message}")
             }
@@ -587,7 +609,9 @@ class HydroponicRepository(
                 }
 
                 NetworkResult.Success(result)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error fetching sensor history: ${e.message}")
                 e.printStackTrace()
                 NetworkResult.Error(e.localizedMessage ?: "Failed to fetch sensor history: ${e.message}")
@@ -646,7 +670,9 @@ class HydroponicRepository(
                         val recordJson = change.record.toString()
                         val device = json.decodeFromString<ControlDevices>(recordJson)
                         trySend(device)
-                    } catch (e: Exception) {
+                    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                         trySend(null)
                     }
                 }
@@ -655,7 +681,9 @@ class HydroponicRepository(
             awaitClose {
                 job.cancel()
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             close(e)
         }
     }.flowOn(Dispatchers.IO)
@@ -684,7 +712,9 @@ class HydroponicRepository(
 
                 println("🔹 [REPO] Device control updated successfully")
                 NetworkResult.Success(true)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error updating device control: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to update device control: ${e.message}")
             }
@@ -736,7 +766,9 @@ class HydroponicRepository(
 
                 println("🔹 [REPO] Date range history fetched: ${result.size} records")
                 NetworkResult.Success(result)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error fetching date range history: ${e.message}")
                 NetworkResult.Error(e.localizedMessage ?: "Failed to fetch date range history")
             }
@@ -797,7 +829,9 @@ class HydroponicRepository(
                 }
 
                 result
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error pairing device: ${e.message}")
                 NetworkResult.Error("Failed to pair device: ${e.message}")
             }
@@ -823,7 +857,9 @@ class HydroponicRepository(
                 }
 
                 result
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error unpairing device: ${e.message}")
                 NetworkResult.Error("Failed to unpair device: ${e.message}")
             }
@@ -858,7 +894,9 @@ class HydroponicRepository(
                 }
 
                 result
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error updating device status: ${e.message}")
                 NetworkResult.Error("Failed to update device status: ${e.message}")
             }
@@ -896,7 +934,9 @@ class HydroponicRepository(
                 }
 
                 result
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error sending device command: ${e.message}")
                 NetworkResult.Error("Failed to send device command: ${e.message}")
             }
@@ -951,7 +991,9 @@ class HydroponicRepository(
                         // Decode langsung ke SensorReadings
                         val reading = json.decodeFromString<SensorReadings>(recordJson)
                         trySend(reading)
-                    } catch (e: Exception) {
+                    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                         println("🔹 [REPO] Error decoding sensor reading: ${e.message}")
                         trySend(null)
                     }
@@ -961,7 +1003,9 @@ class HydroponicRepository(
             awaitClose {
                 job.cancel()
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             close(e)
         }
     }.flowOn(Dispatchers.IO)
@@ -997,7 +1041,9 @@ class HydroponicRepository(
                     }
                     is NetworkResult.Error -> deviceResult
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error validating pairing code: ${e.message}")
                 NetworkResult.Error("Failed to validate pairing code: ${e.message}")
             }
@@ -1032,7 +1078,9 @@ class HydroponicRepository(
 
                 println("🔹 [REPO] Device registered successfully: ${result.id}")
                 NetworkResult.Success(result)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error registering device: ${e.message}")
                 NetworkResult.Error("Failed to register device: ${e.message}")
             }
@@ -1076,7 +1124,9 @@ class HydroponicRepository(
                 }
 
                 result
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [REPO] Error creating greenhouse: ${e.message}")
                 NetworkResult.Error("Failed to create greenhouse: ${e.message}")
             }

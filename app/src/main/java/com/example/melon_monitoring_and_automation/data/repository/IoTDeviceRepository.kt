@@ -69,7 +69,9 @@ class IoTDeviceRepository(
                 println("🔹 [DEVICE REPO] Device paired successfully: ${result.deviceId}")
                 NetworkResult.Success(result)
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [DEVICE REPO] Pairing failed: ${e.message}")
                 NetworkResult.Error("Pairing gagal: ${e.message}")
             }
@@ -97,7 +99,9 @@ class IoTDeviceRepository(
                 println("🔹 [DEVICE REPO] Found ${result.size} devices")
                 NetworkResult.Success(result)
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [DEVICE REPO] Error getting devices: ${e.message}")
                 NetworkResult.Error("Gagal mengambil devices: ${e.message}")
             }
@@ -134,7 +138,9 @@ class IoTDeviceRepository(
                     NetworkResult.Error("Gagal mengambil data greenhouse")
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 NetworkResult.Error("Gagal mengambil devices: ${e.message}")
             }
         }
@@ -158,7 +164,9 @@ class IoTDeviceRepository(
                         .decodeList()
 
                 NetworkResult.Success(result)
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 NetworkResult.Error("Gagal mengambil greenhouse")
             }
         }

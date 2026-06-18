@@ -59,6 +59,7 @@ fun ProfileScreen(
     // 🔹 FIX: Gunakan collectAsStateWithLifecycle untuk semua state
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val greenhouses by greenhouseViewModel.greenhouses.collectAsStateWithLifecycle()
+    val sensorReadings by greenhouseViewModel.sensorReadings.collectAsStateWithLifecycle()
     val authSuccess by viewModel.authSuccess.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
@@ -256,7 +257,7 @@ fun ProfileScreen(
             UserInfoSection(user = currentUser)
 
             // User's Greenhouses
-            UserGreenhousesSection(greenhouses = greenhouses)
+            UserGreenhousesSection(greenhouses = greenhouses, sensorReadings = sensorReadings)
 
             // Update pemanggilan ProfileActionsSection
             ProfileActionsSection(
@@ -452,7 +453,7 @@ fun InfoItem(icon: ImageVector?, label: String, value: String) {
 }
 
 @Composable
-fun UserGreenhousesSection(greenhouses: List<Greenhouse>) {
+fun UserGreenhousesSection(greenhouses: List<Greenhouse>, sensorReadings: Map<String, com.example.melon_monitoring_and_automation.domain.model.SensorReadings>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -488,7 +489,8 @@ fun UserGreenhousesSection(greenhouses: List<Greenhouse>) {
             } else {
                 // Gunakan Column biasa untuk list pendek, jangan LazyColumn di dalam Scrollable Column
                 greenhouses.forEach { greenhouse ->
-                    GreenhouseProfileCard(greenhouse = greenhouse)
+                    val isActive = sensorReadings[greenhouse.id] != null
+                    GreenhouseProfileCard(greenhouse = greenhouse, isActive = isActive)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -497,11 +499,14 @@ fun UserGreenhousesSection(greenhouses: List<Greenhouse>) {
 }
 
 @Composable
-fun GreenhouseProfileCard(greenhouse: Greenhouse) {
+fun GreenhouseProfileCard(greenhouse: Greenhouse, isActive: Boolean) {
+    val backgroundColor = if (isActive) Color(0xFFE8F5E9) else Color(0xFFF0F0F0)
+    val elevation = if (isActive) 2.dp else 0.dp
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-        elevation = CardDefaults.cardElevation(2.dp)
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(elevation)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

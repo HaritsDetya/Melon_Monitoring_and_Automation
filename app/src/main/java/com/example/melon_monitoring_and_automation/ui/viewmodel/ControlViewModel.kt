@@ -148,7 +148,9 @@ class ControlViewModel @Inject constructor(
                         else -> {}
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _errorMessage.value = "Gagal memuat greenhouse: ${e.message}"
             } finally {
                 _isLoading.value = false

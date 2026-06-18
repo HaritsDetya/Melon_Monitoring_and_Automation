@@ -52,7 +52,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Unknown error")
         }
     }
@@ -74,7 +76,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to fetch sensor reading")
         }
     }
@@ -94,7 +98,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to get control device state")
         }
     }
@@ -132,7 +138,9 @@ class ApiService(private val postgrest: Postgrest) {
                 .decodeSingle()
 
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to create control device: ${e.message}")
         }
     }
@@ -158,7 +166,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to fetch IoT devices")
         }
     }
@@ -178,7 +188,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to fetch IoT device")
         }
     }
@@ -198,7 +210,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to fetch IoT device by device ID")
         }
     }
@@ -248,7 +262,9 @@ class ApiService(private val postgrest: Postgrest) {
                 .decodeSingle()
 
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to pair device: ${e.message}")
         }
     }
@@ -277,7 +293,9 @@ class ApiService(private val postgrest: Postgrest) {
                 .decodeSingle()
 
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to unpair device: ${e.message}")
         }
     }
@@ -313,7 +331,9 @@ class ApiService(private val postgrest: Postgrest) {
                 .decodeSingle()
 
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to update device status: ${e.message}")
         }
     }
@@ -342,7 +362,9 @@ class ApiService(private val postgrest: Postgrest) {
                 .decodeSingle()
 
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to send device command: ${e.message}")
         }
     }
@@ -366,7 +388,9 @@ class ApiService(private val postgrest: Postgrest) {
                 }
                 .decodeList()
             NetworkResult.Success(result)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to fetch pending commands")
         }
     }
@@ -390,7 +414,9 @@ class ApiService(private val postgrest: Postgrest) {
                     filter { eq("id", commandId) }
                 }
             NetworkResult.Success(true)
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Failed to mark command as executed: ${e.message}")
         }
     }
@@ -463,7 +489,9 @@ class ApiService(private val postgrest: Postgrest) {
                     controlDevice = controlDevice
                 )
             )
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [API] Error creating greenhouse: ${e.message}")
             e.printStackTrace()
             NetworkResult.Error(e.localizedMessage ?: "Failed to create greenhouse: ${e.message}")
@@ -487,7 +515,9 @@ class ApiService(private val postgrest: Postgrest) {
             println("🔹 [API] Found ${result.size} automation settings")
 
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [API] Error getting automation settings: ${e.message}")
             NetworkResult.Error(e.localizedMessage ?: "Failed to get automation settings")
         }
@@ -510,7 +540,9 @@ class ApiService(private val postgrest: Postgrest) {
             println("🔹 [API] Found ${result.size} control devices")
 
             NetworkResult.Success(result.firstOrNull())
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [API] Error getting control device: ${e.message}")
             NetworkResult.Error(e.localizedMessage ?: "Failed to get control device")
         }

@@ -168,7 +168,9 @@ fun ResetPasswordScreen(
                         println("🔹 [RESET PASSWORD] ❌ Token expired on screen load")
                         viewModel.clearRecoveryTokens(context)
                     }
-                } catch (e: Exception) {
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                     tokenStatus = TokenStatus.INVALID
                     viewModel.setErrorMessage("Error: ${e.message}")
                     println("🔹 [RESET PASSWORD] ❌ Token verification error: ${e.message}")

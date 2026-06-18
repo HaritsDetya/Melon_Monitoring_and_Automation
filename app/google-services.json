@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "467964040589",
+    "firebase_url": "https://melonmonitoringandautomation-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "melonmonitoringandautomation",
+    "storage_bucket": "melonmonitoringandautomation.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:467964040589:android:fd89188ec51591edca19c4",
+        "android_client_info": {
+          "package_name": "com.example.melon_monitoring_and_automation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZqr-ilclXqZbaN3Mqk9rUxue3tBIoYP0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

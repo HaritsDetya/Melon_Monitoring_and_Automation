@@ -101,7 +101,9 @@ class DeviceManagementViewModel @Inject constructor(
                     }
                     else -> {}
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _errorMessage.value = "Error: ${e.message}"
             } finally {
                 _isLoading.value = false

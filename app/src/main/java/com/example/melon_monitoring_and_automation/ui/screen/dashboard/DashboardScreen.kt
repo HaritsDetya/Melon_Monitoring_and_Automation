@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.melon_monitoring_and_automation.R
@@ -130,23 +131,19 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 8.dp)
                     ) {
-                        // APP ICON - Dengan gradient background
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    brush = Brush.radialGradient(
-                                        colors = listOf(Color(0xFF4CAF50), Color(0xFF388E3C))
-                                    ),
-                                    shape = CircleShape
-                                ),
+                                .size(44.dp)
+                                .background(Color.White, shape = CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.logo_svg),
                                 contentDescription = "App Icon",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                                tint = Color.Unspecified,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
                             )
                         }
 
@@ -312,7 +309,7 @@ private fun DashboardContent(
         isLoading && greenhouses.isEmpty() -> LoadingState()
         greenhouses.isEmpty() -> EmptyState(onAddGreenhouseClick = onAddGreenhouseClick)
         else -> {
-            BoxWithConstraints {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val cellCount = if (maxWidth > 600.dp) 2 else 1
 
                 GreenhouseResponsiveList(
@@ -383,8 +380,8 @@ private fun GreenhouseResponsiveList(
 private fun LoadingState() {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp),
+            .fillMaxSize()
+            .padding(vertical = 32.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -418,8 +415,8 @@ private fun EmptyState(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp),
+            .fillMaxSize()
+            .padding(vertical = 32.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -603,12 +600,15 @@ fun GreenhouseCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isInactive = sensorReadings == null
+    val backgroundColor = if (isInactive) Color(0xFFF0F0F0) else Color.White
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isInactive) 0.dp else 2.dp),
         shape = MaterialTheme.shapes.medium
     ) {
         Column(
@@ -663,12 +663,16 @@ private fun GreenhouseHeader(
                 text = greenhouse.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF333333)
+                color = Color(0xFF333333),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = greenhouse.location,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -105,6 +106,13 @@ fun MainAppScreen(
                         },
                         label = { Text(item.title) },
                         selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = androidx.compose.ui.graphics.Color(0xFF2E7D32),
+                            selectedTextColor = androidx.compose.ui.graphics.Color(0xFF2E7D32),
+                            indicatorColor = androidx.compose.ui.graphics.Color(0xFFC8E6C9),
+                            unselectedIconColor = androidx.compose.ui.graphics.Color.Gray,
+                            unselectedTextColor = androidx.compose.ui.graphics.Color.Gray
+                        ),
                         onClick = {
                             // Navigation dengan state preservation
                             innerNavController.navigate(item.route) {

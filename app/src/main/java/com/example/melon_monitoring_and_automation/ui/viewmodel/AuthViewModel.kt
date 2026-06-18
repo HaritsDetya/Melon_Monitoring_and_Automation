@@ -134,7 +134,9 @@ class AuthViewModel @Inject constructor(
                     _authSuccess.value = false
                     println("🔹 [AUTH] Auth check: No authenticated user")
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] Auth check error: ${e.message}")
                 _authSuccess.value = false
                 _currentUser.value = null
@@ -198,7 +200,9 @@ class AuthViewModel @Inject constructor(
                     _authSuccess.value = false
                     _currentUser.value = null
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Registration exception: ${e.message}")
                 _errorMessage.value = "Registrasi gagal: ${e.message}"
                 _authSuccess.value = false
@@ -261,7 +265,9 @@ class AuthViewModel @Inject constructor(
                     _errorMessage.value = userFriendlyError
                     _authSuccess.value = false
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] Login exception: ${e.message}")
                 val userFriendlyError = when {
                     e.message?.contains("Unable to resolve host") == true ->
@@ -326,7 +332,9 @@ class AuthViewModel @Inject constructor(
 
                 println("🔹 [AUTH] Logout completed successfully")
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] Logout error: ${e.message}")
                 _errorMessage.value = "Logout gagal: ${e.message}"
 
@@ -392,7 +400,9 @@ class AuthViewModel @Inject constructor(
                     throw Exception("Gagal mengupdate password")
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _isLoading.value = false
                 println("🔹 [AUTH] ❌ Password update process failed: ${e.message}")
 
@@ -488,7 +498,9 @@ class AuthViewModel @Inject constructor(
                     }
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Supabase Auth API Exception: ${e.message}")
                 throw e // Re-throw exception untuk ditangani di caller
             }
@@ -568,7 +580,9 @@ class AuthViewModel @Inject constructor(
                     onTokenExtracted(null)
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Error processing deep link: ${e.message}")
                 _errorMessage.value = "Error memproses link: ${e.message}"
                 onTokenExtracted(null)
@@ -651,7 +665,9 @@ class AuthViewModel @Inject constructor(
                 _errorMessage.value = "✅ Tautan reset password telah dikirim ke $email. " +
                         "Link hanya valid selama 1 jam."
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Failed to send reset email: ${e.message}")
                 e.printStackTrace()
 
@@ -703,7 +719,9 @@ class AuthViewModel @Inject constructor(
                 _errorMessage.value = "✅ Tautan reset password telah dikirim ke $email. " +
                         "Link hanya valid selama 1 jam."
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Failed to send reset email: ${e.message}")
                 e.printStackTrace()
 
@@ -794,7 +812,9 @@ class AuthViewModel @Inject constructor(
                     _authSuccess.value = false
                     println("🔹 [AUTH-VIEWMODEL] No current user found")
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH-VIEWMODEL] Error loading current user: ${e.message}")
                 _errorMessage.value = "Gagal memuat data pengguna"
                 _currentUser.value = null
@@ -881,7 +901,9 @@ class AuthViewModel @Inject constructor(
                     }
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 println("🔹 [AUTH] ❌ Token verification error: ${e.message}")
                 false
             }
@@ -925,7 +947,9 @@ class AuthViewModel @Inject constructor(
                     onError(errorMsg)
                 }
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _isLoading.value = false
                 println("🔹 [AUTH] ❌ Deletion exception: ${e.message}")
                 val errorMsg = "Error: ${e.message ?: "Unknown error"}"
@@ -968,7 +992,9 @@ class AuthViewModel @Inject constructor(
                         this.email = currentUser.email ?: ""
                         this.password = currentPassword
                     }
-                } catch (e: Exception) {
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                     _isLoading.value = false
                     onError("Password saat ini salah")
                     return@launch
@@ -984,7 +1010,9 @@ class AuthViewModel @Inject constructor(
                 println("🔹 [AUTH] ✅ Password changed successfully")
                 onSuccess()
 
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _isLoading.value = false
                 println("🔹 [AUTH] ❌ Password change failed: ${e.message}")
 

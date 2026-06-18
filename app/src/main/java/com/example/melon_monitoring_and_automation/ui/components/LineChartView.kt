@@ -239,7 +239,9 @@ private fun ChartCanvas(
                 val yRange = (maxY - minY).coerceAtLeast(1f) // Pastikan range minimal 1
                 Triple(maxY, minY, yRange)
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [CHART] Error calculating chart values: ${e.message}")
             onCanvasError()
             Triple(100f, 0f, 100f) // Fallback values
@@ -361,7 +363,9 @@ private fun ChartCanvas(
                     }
                 )
             }
-        } catch (e: Exception) {
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
             println("🔹 [CHART] Canvas drawing error: ${e.message}")
             onCanvasError()
         }

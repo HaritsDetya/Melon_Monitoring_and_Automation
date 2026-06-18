@@ -180,7 +180,9 @@ class GreenhouseViewModel @Inject constructor(
                     println("🔹 [GREENHOUSE-VIEWMODEL] No current user, cannot load greenhouses")
                     _greenhouses.value = emptyList()
                 }
-            } catch (e: Exception) {
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+    throw e
+} catch (e: Exception) {
                 _errorMessage.value = "Gagal memuat greenhouse: ${e.message}"
                 println("🔹 [GREENHOUSE-VIEWMODEL] Exception loading greenhouses: ${e.message}")
             } finally {
